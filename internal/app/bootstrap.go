@@ -3,6 +3,10 @@ package app
 import (
 	"context"
 	"log"
+	"server-management-service/internal/modules/server_management/handler/grpcserver"
+	"server-management-service/internal/modules/server_management/repository/impl"
+	"server-management-service/internal/modules/server_management/service"
+	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
 )
@@ -37,10 +41,16 @@ func New() (*App, error) {
 		log.Printf("elasticsearch connection failed: %v", err)
 	}
 
+	serverRepo := impl.NewGormServerRepository(db)
+	serverSearcher := elasticsearch.NewServerSearcher(esClient, esCfg.ServerIndex)
+	serverSvc := service.NewServerService(serverRepo, serverSearcher)
+	serverHandler := grpcserver.NewServerManagementServer(serverSvc)
+
 	return &App{
-		Config:      cfg,
-		DB:          db,
-		RedisClient: redisClient,
-		ESClient:    esClient,
+		Config:        cfg,
+		DB:            db,
+		RedisClient:   redisClient,
+		ESClient:      esClient,
+		ServerHandler: serverHandler,
 	}, nil
 }

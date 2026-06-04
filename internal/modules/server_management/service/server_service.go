@@ -28,14 +28,19 @@ type ServerService interface {
 	CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error)
 	UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error)
 	DeleteServer(ctx context.Context, id string) error
+	SearchServers(ctx context.Context, filter domain.ServerSearchFilter) (*domain.ServerSearchResult, error)
 }
 
 type serverService struct {
-	repo repository.ServerRepository
+	repo       repository.ServerRepository
+	searchRepo domain.ServerSearchRepository
 }
 
-func NewServerService(repo repository.ServerRepository) ServerService {
-	return &serverService{repo: repo}
+func NewServerService(repo repository.ServerRepository, searchRepo domain.ServerSearchRepository) ServerService {
+	return &serverService{
+		repo:       repo,
+		searchRepo: searchRepo,
+	}
 }
 
 func (s *serverService) CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error) {
@@ -130,4 +135,19 @@ func (s *serverService) DeleteServer(ctx context.Context, id string) error {
 		return err
 	}
 	return nil
+}
+
+func (s *serverService) SearchServers(ctx context.Context, filter domain.ServerSearchFilter) (*domain.ServerSearchResult, error) {
+	if filter.Page < 1 {
+		filter.Page = 1
+	}
+	if filter.Limit < 1 || filter.Limit > 100 {
+		filter.Limit = 20
+	}
+	
+	if filter.FilterStatus != "" && !domain.ServerStatus(filter.FilterStatus).IsValid() {
+		return nil, errors.New("invalid status filter")
+	}
+
+	return s.searchRepo.Search(ctx, filter)
 }

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	
+	server_managementv1 "server-management-service/gen/go/server_management/v1"
 )
 
 func (a *App) Run() error {
@@ -25,8 +27,12 @@ func (a *App) Run() error {
 	grpcAddr := ":" + a.Config.GRPCPort
 	httpAddr := ":" + a.Config.HTTPPort
 
-	// TODO: Replace with proper GRPC server initialization in Phase 2
+	// TODO: Replace with proper GRPC server initialization in Phase 2 (Auth Interceptor)
 	a.GRPCServer = grpc.NewServer()
+	
+	if a.ServerHandler != nil {
+		server_managementv1.RegisterServerManagementServiceServer(a.GRPCServer, a.ServerHandler)
+	}
 
 	// TODO: Replace with proper gateway mux in Phase 2
 	mux := http.NewServeMux()

@@ -9,6 +9,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
+
+	"server-management-service/internal/modules/server_management/handler/grpcserver"
 )
 
 type App struct {
@@ -18,7 +20,8 @@ type App struct {
 	GRPCServer *grpc.Server
 	HTTPServer *http.Server
 
-	RedisClient  redis.UniversalClient
-	ESClient     *elasticsearch.Client
-	KafkaBrokers []string
+	RedisClient   redis.UniversalClient
+	ESClient      *elasticsearch.Client
+	KafkaBrokers  []string
+	ServerHandler *grpcserver.ServerManagementServer
 }
