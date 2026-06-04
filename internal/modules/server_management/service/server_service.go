@@ -1,0 +1,133 @@
+package service
+
+import (
+	"context"
+	"errors"
+
+	"server-management-service/internal/modules/server_management/domain"
+	"server-management-service/internal/modules/server_management/repository"
+)
+
+var (
+	ErrServerNotFound = errors.New("server not found")
+	ErrIPv4Exists     = errors.New("ipv4 already exists")
+	ErrNameExists     = errors.New("server name already exists")
+)
+
+type CreateServerInput struct {
+	ServerName string
+	IPv4       string
+}
+
+type UpdateServerInput struct {
+	ServerName string
+	IPv4       string
+}
+
+type ServerService interface {
+	CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error)
+	UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error)
+	DeleteServer(ctx context.Context, id string) error
+}
+
+type serverService struct {
+	repo repository.ServerRepository
+}
+
+func NewServerService(repo repository.ServerRepository) ServerService {
+	return &serverService{repo: repo}
+}
+
+func (s *serverService) CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error) {
+	existingName, err := s.repo.GetByName(ctx, input.ServerName)
+	if err != nil {
+		return nil, err
+	}
+	if existingName != nil {
+		return nil, ErrNameExists
+	}
+
+	existingIP, err := s.repo.GetByIPv4(ctx, input.IPv4)
+	if err != nil {
+		return nil, err
+	}
+	if existingIP != nil {
+		return nil, ErrIPv4Exists
+	}
+
+	server := &domain.Server{
+		ServerName: input.ServerName,
+		IPv4:       input.IPv4,
+	}
+
+	err = s.repo.Create(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+
+	return server, nil
+}
+
+func (s *serverService) UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error) {
+	server, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrServerNotFound
+		}
+		return nil, err
+	}
+	if server == nil {
+		return nil, ErrServerNotFound
+	}
+
+	if input.ServerName != server.ServerName {
+		existingName, err := s.repo.GetByName(ctx, input.ServerName)
+		if err != nil {
+			return nil, err
+		}
+		if existingName != nil && existingName.ServerID != id {
+			return nil, ErrNameExists
+		}
+		server.ServerName = input.ServerName
+	}
+
+	if input.IPv4 != server.IPv4 {
+		existingIP, err := s.repo.GetByIPv4(ctx, input.IPv4)
+		if err != nil {
+			return nil, err
+		}
+		if existingIP != nil && existingIP.ServerID != id {
+			return nil, ErrIPv4Exists
+		}
+		server.IPv4 = input.IPv4
+	}
+
+	err = s.repo.Update(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+
+	return server, nil
+}
+
+func (s *serverService) DeleteServer(ctx context.Context, id string) error {
+	server, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrServerNotFound
+		}
+		return err
+	}
+	if server == nil {
+		return ErrServerNotFound
+	}
+
+	err = s.repo.Delete(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrServerNotFound
+		}
+		return err
+	}
+	return nil
+}
