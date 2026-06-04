@@ -102,3 +102,33 @@ func (s *ServerManagementServer) DeleteServer(ctx context.Context, req *server_m
 		Success: true,
 	}, nil
 }
+
+func (s *ServerManagementServer) ViewServers(ctx context.Context, req *server_managementv1.ViewServersRequest) (*server_managementv1.ViewServersResponse, error) {
+	if req == nil {
+		return nil, gstatus.Error(codes.InvalidArgument, "request is required")
+	}
+
+	filter := domain.ServerSearchFilter{
+		Page:          int(req.GetPage()),
+		Limit:         int(req.GetLimit()),
+		FilterStatus:  req.GetFilterStatus(),
+		FilterName:    req.GetFilterName(),
+		SortBy:        req.GetSortBy(),
+		SortDirection: req.GetSortDirection(),
+	}
+
+	result, err := s.serverService.SearchServers(ctx, filter)
+	if err != nil {
+		return nil, gstatus.Error(codes.Internal, err.Error())
+	}
+
+	var pbServers []*server_managementv1.Server
+	for _, server := range result.Servers {
+		pbServers = append(pbServers, mapServerToPB(server))
+	}
+
+	return &server_managementv1.ViewServersResponse{
+		TotalCount: result.TotalCount,
+		Servers:    pbServers,
+	}, nil
+}

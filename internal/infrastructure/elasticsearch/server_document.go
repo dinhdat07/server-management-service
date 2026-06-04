@@ -1,7 +1,6 @@
 package elasticsearch
 
 import (
-	"fmt"
 	"time"
 )
 

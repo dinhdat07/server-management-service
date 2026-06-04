@@ -11,6 +11,14 @@ const (
 	ServerStatusOffline ServerStatus = "OFFLINE"
 )
 
+func (s ServerStatus) IsValid() bool {
+	switch s {
+	case ServerStatusOnline, ServerStatusOffline:
+		return true
+	}
+	return false
+}
+
 type Server struct {
 	ServerID            string       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"server_id"`
 	ServerName          string       `gorm:"type:varchar(255);uniqueIndex;not null" json:"server_name"`
