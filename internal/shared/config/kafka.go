@@ -7,15 +7,10 @@ import (
 )
 
 type KafkaConfig struct {
-	Brokers []string
-
-	// Producer topics
-	UserTopic                  string
-	AuditTopic                 string
+	Brokers                    []string
 	NotificationRequestedTopic string
-
-	// Consumer group, chỉ dùng nếu service này có consumer
-	ConsumerGroup string
+	ServerTopic                string
+	ConsumerGroup              string
 }
 
 func LoadKafkaConfig() (KafkaConfig, error) {
@@ -24,11 +19,10 @@ func LoadKafkaConfig() (KafkaConfig, error) {
 	cfg := KafkaConfig{
 		Brokers: splitAndTrim(brokers),
 
-		UserTopic:                  getEnv("KAFKA_USER_TOPIC", "portal.public.users"),
-		AuditTopic:                 getEnv("KAFKA_AUDIT_LOG_TOPIC", "portal.public.action_logs"),
 		NotificationRequestedTopic: getEnv("KAFKA_NOTIFICATION_REQUESTED_TOPIC", "notification.requested"),
+		ServerTopic:                getEnv("KAFKA_SERVER_TOPIC", "sms.management_schema.servers"),
 
-		ConsumerGroup: getEnv("KAFKA_CONSUMER_GROUP", "portal-user-search-indexer"),
+		ConsumerGroup: getEnv("KAFKA_CONSUMER_GROUP", "portal-server-management-group"),
 	}
 
 	if len(cfg.Brokers) == 0 {
