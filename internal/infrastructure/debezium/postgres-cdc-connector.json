@@ -1,0 +1,25 @@
+{
+    "name": "sms-postgres-cdc-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+
+        "database.hostname": "db",
+        "database.port": "5432",
+        "database.user": "postgres",
+        "database.password": "postgres",
+        "database.dbname": "postgres",
+        
+        "topic.prefix": "sms",
+        "plugin.name": "pgoutput",
+        "slot.name": "sms_cdc_slot",
+        "publication.name": "sms_cdc_publication",
+
+        "table.include.list": "management_schema.servers",
+        "snapshot.mode": "initial",
+
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter.schemas.enable": "false"       
+    }
+}

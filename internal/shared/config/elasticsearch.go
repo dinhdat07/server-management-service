@@ -3,9 +3,8 @@ package config
 import "os"
 
 type ElasticsearchConfig struct {
-	URL        string
-	UserIndex  string
-	AuditIndex string
+	URL         string
+	ServerIndex string
 }
 
 func LoadElasticsearchConfig() ElasticsearchConfig {
@@ -14,19 +13,13 @@ func LoadElasticsearchConfig() ElasticsearchConfig {
 		url = "http://elasticsearch:9200"
 	}
 
-	userIndex := os.Getenv("ELASTICSEARCH_USER_INDEX")
-	if userIndex == "" {
-		userIndex = "portal_users"
-	}
-
-	auditIndex := os.Getenv("ELASTICSEARCH_AUDIT_LOG_INDEX")
-	if auditIndex == "" {
-		auditIndex = "portal_users"
+	serverIndex := os.Getenv("ELASTICSEARCH_SERVER_INDEX")
+	if serverIndex == "" {
+		serverIndex = "sms_server_catalog"
 	}
 
 	return ElasticsearchConfig{
-		URL:        url,
-		UserIndex:  userIndex,
-		AuditIndex: auditIndex,
+		URL:         url,
+		ServerIndex: serverIndex,
 	}
 }
