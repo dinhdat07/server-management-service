@@ -7,6 +7,7 @@ import (
 
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
 	"server-management-service/internal/modules/server_management/domain"
+	"server-management-service/internal/modules/server_management/repository"
 	"server-management-service/internal/modules/server_management/service"
 
 	"google.golang.org/grpc/codes"
@@ -108,27 +109,27 @@ func (s *ServerManagementServer) ViewServers(ctx context.Context, req *server_ma
 		return nil, gstatus.Error(codes.InvalidArgument, "request is required")
 	}
 
-	filter := domain.ServerSearchFilter{
+	filter := repository.ServerListFilter{
 		Page:          int(req.GetPage()),
-		Limit:         int(req.GetLimit()),
-		FilterStatus:  req.GetFilterStatus(),
-		FilterName:    req.GetFilterName(),
+		PageSize:      int(req.GetLimit()),
+		Status:        req.GetFilterStatus(),
+		Name:          req.GetFilterName(),
 		SortBy:        req.GetSortBy(),
 		SortDirection: req.GetSortDirection(),
 	}
 
-	result, err := s.serverService.SearchServers(ctx, filter)
+	servers, totalCount, err := s.serverService.SearchServers(ctx, filter)
 	if err != nil {
 		return nil, gstatus.Error(codes.Internal, err.Error())
 	}
 
 	var pbServers []*server_managementv1.Server
-	for _, server := range result.Servers {
+	for _, server := range servers {
 		pbServers = append(pbServers, mapServerToPB(server))
 	}
 
 	return &server_managementv1.ViewServersResponse{
-		TotalCount: result.TotalCount,
+		TotalCount: totalCount,
 		Servers:    pbServers,
 	}, nil
 }
