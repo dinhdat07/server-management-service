@@ -24,11 +24,21 @@ type UpdateServerInput struct {
 	IPv4       string
 }
 
+type ImportResult struct {
+	SuccessCount      int32
+	SuccessfulServers []string
+	FailCount         int32
+	FailedServers     []string
+}
+
 type ServerService interface {
 	CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error)
 	UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error)
 	DeleteServer(ctx context.Context, id string) error
 	SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error)
+	
+	ImportServers(ctx context.Context, fileBytes []byte) (*ImportResult, error)
+	ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error)
 }
 
 type serverService struct {

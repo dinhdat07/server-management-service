@@ -68,6 +68,18 @@ func (r *GormServerRepository) GetByName(ctx context.Context, name string) (*dom
 	return &server, nil
 }
 
+func (r *GormServerRepository) FindByNamesOrIPv4s(ctx context.Context, names []string, ipv4s []string) ([]*domain.Server, error) {
+	if len(names) == 0 && len(ipv4s) == 0 {
+		return nil, nil
+	}
+	var servers []*domain.Server
+	err := r.getDB(ctx).Where("server_name IN ? OR ipv4 IN ?", names, ipv4s).Find(&servers).Error
+	if err != nil {
+		return nil, err
+	}
+	return servers, nil
+}
+
 func (r *GormServerRepository) Update(ctx context.Context, server *domain.Server) error {
 	server.ServerName = strings.TrimSpace(server.ServerName)
 	server.IPv4 = strings.TrimSpace(server.IPv4)
