@@ -193,23 +193,24 @@ Thời gian phát hiện \= Interval (30s) \+ Timeout (3s) \= 33 giây
 
 ## **ADR-006: THIẾT KẾ KIẾN TRÚC HỆ THỐNG BÁO CÁO BẤT ĐỒNG BỘ QUA EMAIL (ASYNC REPORTING PIPELINE)**
 
-* **Trạng thái:** Đã phê duyệt (Approved).  
-* **Bối cảnh:** Việc tổng hợp dữ liệu, quét lịch sử sự kiện trên Elasticsearch và kết xuất định dạng giao diện HTML Email cho 10,000 server là một tác vụ tiêu tốn rất nhiều tài nguyên CPU/RAM và thời gian xử lý (thường kéo dài từ vài giây đến hàng chục giây tùy thuộc vào khoảng thời gian lựa chọn). Nếu API thiết kế theo dạng đồng bộ (Synchronous), HTTP Connection giữa Postman/Swagger Client và API Gateway sẽ bị giữ lại quá lâu, dễ dẫn đến tình trạng hàng loạt kết nối bị ngắt do quá thời hạn (Gateway Timeout 504\) và gây nghẽn toàn bộ luồng hoạt động thông thường của API Core.  
-* **Quyết định:** Hệ thống thống nhất triển khai giải pháp kiến trúc **Bất đồng bộ hoàn toàn (Asynchronous Processing)** dựa trên cơ chế kết hợp giữa **Transactional Outbox Pattern** và nền tảng **Portal-Notification Service** sẵn có:  
-  1. **Phản hồi Client:** API tiếp nhận yêu cầu báo cáo chủ động tại Endpoint POST /api/v1/servers/report lập tức thực hiện ghi nhận một bản ghi tác vụ vào bảng outbox\_events bên trong cùng một Database Transaction của Postgres để đảm bảo tính toàn vẹn dữ liệu. Trả về ngay lập tức mã trạng thái **202 Accepted** kèm thông điệp phản hồi dạng JSON:  
+* **Trạng thái:** Đã phê duyệt (Approved) - *Đã cập nhật tuân thủ Bounded Context*.  
+* **Bối cảnh:** Việc tổng hợp dữ liệu, quét lịch sử sự kiện trên Elasticsearch và kết xuất định dạng báo cáo cho 10,000 server là một tác vụ tiêu tốn rất nhiều tài nguyên. Nếu API thiết kế theo dạng đồng bộ (Synchronous), HTTP Connection sẽ bị giữ lại quá lâu gây Gateway Timeout. Ngoài ra, việc giao toàn bộ logic tính toán Uptime cho `Notification Service` vi phạm nghiêm trọng nguyên lý Bounded Context.  
+* **Quyết định:** Triển khai giải pháp kiến trúc **Bất đồng bộ hoàn toàn (Asynchronous Processing)** dựa trên cơ chế **Transactional Outbox Pattern** kết hợp với **Report Consumer** nội bộ và **Notification Service**:  
+  1. **Phản hồi Client:** API tiếp nhận yêu cầu báo cáo chủ động tại Endpoint POST /api/v1/servers/report lập tức thực hiện ghi nhận tác vụ vào bảng `outbox_events` bên trong cùng một Database Transaction của Postgres. Trả về ngay lập tức mã trạng thái **200 OK** kèm thông điệp:  
   2. JSON  
      {  
-       "status": "SUCCESS",  
-       "code": 202,  
-       "message": "Send request successfully"      
+       "status": "processing",  
+       "code": 200,  
+       "message": "Report generation is processing in background"      
      }  
-  3. **Cơ chế truyền tin:** Một dịch vụ chạy nền mang tên **Outbox Worker** liên tục quét bảng dữ liệu này, đóng gói payload và thực hiện đẩy tin nhắn (Publish) vào một Kafka Topic chuyên biệt mang tên server.report.requested.  
-  4. **Xử lý và Gửi Mail:** Dịch vụ vệ tinh **Notification Service** tiêu thụ tin nhắn từ Topic này, trực tiếp đảm nhận vai trò thực thi câu lệnh truy vấn Aggregation lên Elasticsearch để lấy số liệu , tự động điền dữ liệu (Render) vào biểu mẫu giao diện HTML Email thiết kế chỉn chu, và thực hiện kết nối gửi thư đến máy chủ SMTP trung gian.  
-* **Biện minh (Justification):** Thiết kế này thể hiện tư duy thiết kế hệ thống phân tán (Distributed System Design) định hướng Production-grade. Nó biến một tác vụ có nguy cơ gây sập hệ thống thành một luồng xử lý tuần tự, mượt mà và an toàn hơn trên nền tảng Kafka.  
+  3. **Cơ chế Outbox:** Dịch vụ **Outbox Worker** liên tục quét bảng dữ liệu, đóng gói payload và thực hiện đẩy tin nhắn (Publish) vào một Kafka Topic chuyên biệt mang tên `server.report.requested`.  
+  4. **Tính toán Số liệu (Report Consumer):** Một Consumer nội bộ của `server-management-service` tiêu thụ tin nhắn từ `server.report.requested`, đảm nhận vai trò thực thi câu lệnh truy vấn Aggregation Date Histogram lên Elasticsearch để lấy số liệu Uptime %.  
+  5. **Gửi Mail (Notification Service):** Sau khi tính toán xong, Report Consumer đóng gói số liệu và đẩy tin nhắn vào topic `portal.notification.requested`. Dịch vụ vệ tinh **Notification Service** chỉ nhận Data thuần, thực hiện điền dữ liệu (Render) vào biểu mẫu HTML Email `server_report` và gửi thư đến máy chủ SMTP trung gian.  
+* **Biện minh (Justification):** Thiết kế này đảm bảo tuyệt đối nguyên lý **Bounded Context**, giữ cho `Notification Service` hoàn toàn generic (không biết Elasticsearch là gì). Core API luôn giữ vững trạng thái ổn định với độ trễ tối thiểu nhờ Outbox Pattern.  
 * **Hệ quả (Consequences):**  
-  * *Tích cực:* Core API luôn giữ vững trạng thái ổn định với độ trễ tối thiểu, hệ thống có khả năng tự động xếp hàng và xử lý mượt mà hàng ngàn yêu cầu báo cáo mà không gặp bất kỳ xung đột nào.  
-  * *Tiêu cực:* Việc debug và theo dõi vết lỗi (Traceability) trở nên phức tạp hơn khi luồng xử lý bị bẻ gãy xuyên suốt qua nhiều dịch vụ cấu trúc khác nhau.  
-  * *Biện pháp giảm thiểu:* Áp dụng cơ chế truyền mã định danh theo vết độc nhất **Correlation ID** xuyên suốt từ Request Body ban đầu của API Core, đóng gói đi kèm vào Payload của bản tin Outbox và tin nhắn Kafka, giúp đội vận hành dễ dàng thực hiện tra cứu toàn bộ hành trình xử lý log tập trung khi có sự cố xảy ra.
+  * *Tích cực:* Triệt tiêu điểm nghẽn cổ chai ở API, dễ dàng mở rộng và bảo trì do các Domain được phân rạch ròi.  
+  * *Tiêu cực:* Việc debug trở nên phức tạp do luồng xử lý đi qua 2 topic Kafka và 3 dịch vụ.  
+  * *Biện pháp giảm thiểu:* Áp dụng cơ chế truyền mã định danh theo vết độc nhất **Correlation ID** xuyên suốt giúp dễ dàng tra cứu log tập trung khi có sự cố xảy ra.
 
 ## **ADR-007: QUẢN LÝ TRANSACTION CHO CÁC TÁC VỤ ĐA BƯỚC (TX MANAGER)**
 

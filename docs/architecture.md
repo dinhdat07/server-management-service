@@ -102,13 +102,12 @@ graph TD
         ES[("Elasticsearch<br>(Analytics Read Model)")]
     end
     
-    subgraph Satellite_Pod ["Satellite Worker Pod (Co-located Deployment)"]
-        subgraph RE_Logic ["Reporting Context (Logic Boundary)"]
-            RE["Reporting Engine Worker"]
-        end
-        subgraph NS_Logic ["Notification Context (Logic Boundary)"]
-            Noti["Notification Delivery Module"]
-        end
+    subgraph S_Module ["Reporting Module / Analytics Worker"]
+        RE["Report Consumer"]
+    end
+    
+    subgraph NS_Module ["Notification Service (Microservice độc lập)"]
+        Noti["Notification Delivery"]
     end
     
     subgraph External ["Hạ Tầng Phân Phối Ngoài"]
@@ -132,31 +131,29 @@ graph TD
     
     Kafka -->|Consume Report Requests| RE
     RE -->|Truy vấn Aggregations tính toán Uptime phức tạp| ES
-    RE -->|Gọi qua Go Interface sạch| Noti
+    RE -->|Publish Payload Data & Template ID| Kafka
+    Kafka -->|Consume Notification Requests| Noti
     
     Noti -->|Đẩy kết nối giao thức| SMTP
     SMTP -->|Gửi thư điện tử| Email
 
     %% Styling
+    classDef domain fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px;
+    class SMM,MM,RM domain;
     style Monolith fill:#f9f9f9,stroke:#333,stroke-width:2px;
     style Storage fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
     style CDC fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
     style ReadModel fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-    style Satellite_Pod fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
     style External fill:#fafafa,stroke:#9e9e9e,stroke-width:1px;
 ```
 
-**Lưu ý chiến lược về thiết kế ranh giới vật lý (Architectural Evolution Note):**  
-Nhìn vào sơ đồ tương tác, cấu phần Satellite Worker Pod hiện đang gánh vác song song hai vai trò logic độc lập: Reporting Context (Chịu trách nhiệm bóc tách tệp Excel, tính toán Uptime nặng trên Elasticsearch) và Notification Context (Chịu trách nhiệm quản lý biểu mẫu và kết nối hạ tầng mạng SMTP). Xét theo lý thuyết thiết kế Microservices thuần túy, việc gộp hai nhiệm vụ này vào chung một đơn vị triển khai vật lý là chưa tuân thủ nghiêm ngặt nguyên tắc Đơn nhiệm (Single Responsibility Principle \- SRP).  
-Tuy nhiên, đây là một quyết định đánh đổi kiến trúc có chủ đích (Pragmatic Trade-off) nhằm tối ưu hóa tài nguyên phần cứng mạng lưới và giảm thiểu chi phí vận hành (DevOps Operational Overhead) ở giai đoạn khởi đầu dự án, dựa trên ba nền tảng cốt lõi:
+## **3.3 Trọng tâm Đánh đổi Kiến trúc & Đảm bảo Bounded Context**
 
-* **Cô lập bằng ranh giới Domain (Bounded Context Isolation):** Bên trong cấu trúc mã nguồn ở tầng logic, hai phân hệ Reporting và Notification được cô lập hoàn toàn thành các package độc lập, sở hữu cấu trúc dữ liệu và Domain Models riêng biệt, chỉ tương tác qua Interface sạch. Sự gộp ở đây thuần túy là gộp thực thể triển khai (Co-located Deployment Unit) thành một tiến trình chạy ngầm bất đồng bộ để tiết kiệm tài nguyên K8s Pods.
+Nhìn vào sơ đồ tương tác, phân hệ Analytics/Reporting (tính toán Uptime) và phân hệ Notification (gửi email) đã được bóc tách hoàn toàn:
 
-* **Tối ưu hóa băng thông Trục xương sống Kafka:** Thay vì bắt Core API Monolith thực hiện các câu lệnh thống kê Analytics nặng rồi đóng gói một Message quá khổ với Payload kích thước hàng Megabyte chứa mảng dữ liệu HTML đẩy lên Kafka — một phản mẫu (Anti-pattern) gây nghẽn I/O hệ thống — Core API chỉ phát tán một thông điệp siêu nhỏ chứa các tham số bộ lọc (Filter Parameters). Quyết định giao quyền cho dịch vụ vệ tinh tự kéo dữ liệu từ Elasticsearch Read Model giúp bảo vệ hiệu năng đỉnh của Kafka.
-
-* **Sẵn sàng kiến trúc tiến hóa (Evolutionary Architecture):** Do toàn bộ luồng tích hợp được điều hướng qua Apache Kafka, khi quy mô hạ tầng mở rộng và vượt ngưỡng 10.000+ Servers, đội ngũ phát triển có thể lập tức tách package Notification thành một Microservice độc lập riêng biệt qua một cấu hình Dockerfile mới mà tuyệt đối không cần chỉnh sửa hay tái cấu trúc bất kỳ dòng mã nào trong Core API Monolith.
-
-Cơ chế này giúp hệ thống đạt được sự linh hoạt tối đa: Giữ thiết kế ranh giới lỏng ở tầng logic để dễ dàng xé dọc thành Microservices trong tương lai, nhưng gộp đóng gói vật lý ở hiện tại để tối ưu chi phí vận hành.
+* **Cô lập bằng ranh giới Domain (Bounded Context Isolation):** Hệ thống không bắt Notification Service đi truy vấn Elasticsearch. Việc này bảo toàn sự "trong sạch" cho Notification Service - một dịch vụ trung gian chung chung chỉ nhận và gửi Data.
+* **Tối ưu hóa Băng thông Kafka:** `Report Consumer` thực hiện thống kê Analytics từ Elasticsearch, đóng gói dữ liệu và gửi sang Notification Service qua Kafka.
+* **Sẵn sàng kiến trúc tiến hóa (Evolutionary Architecture):** Với luồng đi qua Apache Kafka, Notification Service hoàn toàn độc lập, tách biệt khỏi logic của hệ thống cốt lõi.
 
 ## **3.3 Architecture Principles**
 
@@ -296,9 +293,9 @@ graph LR
     style Consumer fill:#e0f2f1,stroke:#00695c,stroke-width:2px;
 ```
 
-## **6.2 ReportRequested Flow**
+## **6.2 Excel Import Flow**
 
-Quy trình tiếp nhận và xử lý yêu cầu báo cáo nặng, phân phối tác vụ sang dịch vụ Notification chuyên biệt không làm ảnh hưởng độ trễ của API chính:
+Quy trình xử lý nạp danh sách máy chủ hàng loạt bằng tệp Excel được thực thi nền thông qua Goroutines nhằm không làm ảnh hưởng độ trễ của API chính:
 
 ```mermaid
 sequenceDiagram
@@ -380,10 +377,8 @@ sequenceDiagram
     participant OB as Outbox Worker Engine
     participant K as Kafka Broker
     
-    box rgb(243, 229, 245) Satellite Worker Pod
-    participant RE as Reporting Engine Worker (Logic Context)
-    participant NS as Notification Delivery (Logic Context)
-    end
+    participant RE as Report Consumer (server-management-service)
+    participant NS as Notification Service
     
     participant ES as Elasticsearch (Read Model)
     participant SMTP as External SMTP Provider
@@ -391,7 +386,7 @@ sequenceDiagram
     Admin->>RM: Gửi yêu cầu khởi tạo báo cáo Uptime (Time Window)
     RM->>DB: Mở ACID Transaction:<br>1. Ghi bảng report_requests (status=PENDING)<br>2. Ghi bảng outbox_events (Payload JSON)
     DB-->>RM: Commit Transaction thành công
-    RM-->>Admin: Phản hồi mã "202 Accepted" (Giải phóng API kết nối)
+    RM-->>Admin: Phản hồi mã "200 OK" (Kèm status processing)
 
     loop Quét bảng Outbox định kỳ (Safe Transaction Polling)
         OB->>DB: Đọc các bản ghi chưa phát tán trong outbox_events
@@ -402,12 +397,13 @@ sequenceDiagram
     end
 
     K->>RE: Tiêu thụ thông điệp chứa thông số bộ lọc báo cáo (Async Consume)
-    RE->>RE: Kiểm tra tính kháng trùng lặp thông điệp (Idempotency Check)
-    RE->>ES: Thực thi câu lệnh truy vấn gộp chuỗi thời gian (Metrics Aggregations Query)
-    ES-->>RE: Trả về mảng dữ liệu lịch sử biến động trạng thái hoạt động (ONLINE/OFFLINE)
+    RE->>RE: Kiểm tra tính kháng trùng lặp thông điệp (Redis Lock SetNX)
+    RE->>ES: Thực thi câu lệnh truy vấn Date Histogram (Metrics Aggregations Query)
+    ES-->>RE: Trả về mảng dữ liệu lịch sử biến động trạng thái
     RE->>RE: Thực thi thuật toán tính toán tỷ lệ Uptime, chặn biên thực thể đã xóa cứng
     
-    RE->>NS: Gọi nội bộ qua Go Interface: emailService.SendHTML(...)
+    RE->>K: Publish kết quả sang Topic (portal.notification.requested)
+    K->>NS: Tiêu thụ Payload Data & Template ID
     NS->>NS: Auto-render dữ liệu hạ tầng vào biểu mẫu HTML Email Template
     NS->>SMTP: Kết nối luồng mạng và chuyển tiếp thông điệp qua cổng giao thức SMTP
     SMTP-->>Admin: Bức thư báo cáo hoàn chỉnh được phân phối vào hòm thư Email của Admin
