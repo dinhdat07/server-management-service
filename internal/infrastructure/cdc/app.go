@@ -8,13 +8,38 @@ import (
 	"server-management-service/internal/shared/config"
 	esinfra "server-management-service/internal/infrastructure/elasticsearch"
 	redisinfra "server-management-service/internal/infrastructure/redis"
+	"server-management-service/internal/shared/database"
 
-	esv8 "github.com/elastic/go-elasticsearch/v8"
-	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 )
 
-func New(ctx context.Context, kafkaCfg config.KafkaConfig, esCfg config.ElasticsearchConfig, esClient *esv8.Client, redisClient redis.UniversalClient) (*Consumer, error) {
+func New() (*Consumer, error) {
+	ctx := context.Background()
+
+	kafkaCfg, err := config.LoadKafkaConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kafka config: %w", err)
+	}
+
+	esCfg := config.LoadElasticsearchConfig()
+
+	esClient, err := database.NewElasticsearchClient(ctx, []string{esCfg.URL})
+	if err != nil {
+		return nil, fmt.Errorf("elasticsearch connection failed: %w", err)
+	}
+
+	redisCfg, err := config.LoadRedisConfig()
+	if err != nil {
+		log.Printf("failed to load redis config: %v", err)
+	}
+
+	redisClient := database.NewRedisClient(redisCfg)
+	if redisClient != nil {
+		if err := database.PingRedis(ctx, redisClient); err != nil {
+			log.Printf("redis ping failed: %v", err)
+		}
+	}
+
 	serverIndexer := esinfra.NewServerIndexer(esClient, esCfg.ServerIndex)
 	if err := serverIndexer.EnsureIndex(ctx); err != nil {
 		return nil, fmt.Errorf("ensure server index: %w", err)

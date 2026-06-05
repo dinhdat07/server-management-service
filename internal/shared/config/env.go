@@ -23,7 +23,7 @@ func loadEnv() {
 	})
 }
 
-func getEnvDefault(key, fallback string) string {
+func GetEnvDefault(key, fallback string) string {
 	val := os.Getenv(key)
 	if val == "" {
 		return fallback
@@ -31,7 +31,7 @@ func getEnvDefault(key, fallback string) string {
 	return val
 }
 
-func getEnvBool(key string, fallback bool) (bool, error) {
+func GetEnvBool(key string, fallback bool) (bool, error) {
 	val := os.Getenv(key)
 	if val == "" {
 		return fallback, nil
@@ -39,7 +39,7 @@ func getEnvBool(key string, fallback bool) (bool, error) {
 	return strconv.ParseBool(val)
 }
 
-func getEnvInt(key string, fallback int) (int, error) {
+func GetEnvInt(key string, fallback int) (int, error) {
 	val := os.Getenv(key)
 	if val == "" {
 		return fallback, nil
@@ -47,7 +47,7 @@ func getEnvInt(key string, fallback int) (int, error) {
 	return strconv.Atoi(val)
 }
 
-func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
+func GetEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
 	val := os.Getenv(key)
 	if val == "" {
 		return fallback, nil
@@ -55,7 +55,7 @@ func getEnvDuration(key string, fallback time.Duration) (time.Duration, error) {
 	return time.ParseDuration(val)
 }
 
-func getEnvFloat(key string, fallback float64) (float64, error) {
+func GetEnvFloat(key string, fallback float64) (float64, error) {
 	val := os.Getenv(key)
 	if val == "" {
 		return fallback, nil

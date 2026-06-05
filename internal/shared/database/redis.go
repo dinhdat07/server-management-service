@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"server-management-service/internal/shared/config"
 
@@ -31,4 +32,12 @@ func PingRedis(ctx context.Context, rdb redis.UniversalClient) error {
 		return nil
 	}
 	return rdb.Ping(ctx).Err()
+}
+
+// AcquireLock attempts to acquire a distributed lock in Redis, no need ReleaseLock because of long TTL configuration
+func AcquireLock(ctx context.Context, rdb redis.UniversalClient, key string, expiration time.Duration) (bool, error) {
+	if rdb == nil {
+		return false, nil
+	}
+	return rdb.SetNX(ctx, key, "locked", expiration).Result()
 }

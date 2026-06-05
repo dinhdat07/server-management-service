@@ -33,43 +33,43 @@ func Load() (*Config, error) {
 	// load .env into os env
 	loadEnv()
 
-	accessTTL, err := getEnvInt("JWT_ACCESS_TTL", 3600)
+	accessTTL, err := GetEnvInt("JWT_ACCESS_TTL", 3600)
 	if err != nil {
 		return nil, fmt.Errorf("invalid JWT_ACCESS_TTL: %w", err)
 	}
-	refreshTTL, err := getEnvInt("JWT_REFRESH_TTL", 604800)
+	refreshTTL, err := GetEnvInt("JWT_REFRESH_TTL", 604800)
 	if err != nil {
 		return nil, fmt.Errorf("invalid JWT_REFRESH_TTL: %w", err)
 	}
 
-	jwtSecret := getEnvDefault("JWT_SECRET", "")
+	jwtSecret := GetEnvDefault("JWT_SECRET", "")
 	if jwtSecret == "" {
 		// Backward compatibility with older env key.
-		jwtSecret = getEnvDefault("JWT_SECRET_KEY", "")
+		jwtSecret = GetEnvDefault("JWT_SECRET_KEY", "")
 	}
 
-	httpPort := strings.TrimSpace(getEnvDefault("HTTP_PORT", ""))
+	httpPort := strings.TrimSpace(GetEnvDefault("HTTP_PORT", ""))
 	if httpPort == "" {
-		httpPort = getEnvDefault("PORT", "8000")
+		httpPort = GetEnvDefault("PORT", "8000")
 	}
 
 	cfg := &Config{
-		GRPCPort:      getEnvDefault("GRPC_PORT", "50051"),
+		GRPCPort:      GetEnvDefault("GRPC_PORT", "50051"),
 		HTTPPort:      httpPort,
-		DBUrl:         getEnvDefault("DB_URL", ""),
+		DBUrl:         GetEnvDefault("DB_URL", ""),
 		JWTSecret:     jwtSecret,
 		JWTAccessTTL:  accessTTL,
 		RefreshTTL:    refreshTTL,
-		Port:          getEnvDefault("PORT", httpPort),
-		Env:           getEnvDefault("ENV", "development"),
-		AdminEmail:    getEnvDefault("ADMIN_EMAIL", ""),
-		AdminPassword: getEnvDefault("ADMIN_PASSWORD", ""),
-		ApiBaseUrl:          getEnvDefault("API_BASE_URL", ""),
-		FrontEndUrl:         getEnvDefault("FRONTEND_BASE_URL", ""),
-		TelegramBotUsername: getEnvDefault("TELEGRAM_BOT_USERNAME", "YourBotUsername"),
+		Port:          GetEnvDefault("PORT", httpPort),
+		Env:           GetEnvDefault("ENV", "development"),
+		AdminEmail:    GetEnvDefault("ADMIN_EMAIL", ""),
+		AdminPassword: GetEnvDefault("ADMIN_PASSWORD", ""),
+		ApiBaseUrl:          GetEnvDefault("API_BASE_URL", ""),
+		FrontEndUrl:         GetEnvDefault("FRONTEND_BASE_URL", ""),
+		TelegramBotUsername: GetEnvDefault("TELEGRAM_BOT_USERNAME", "YourBotUsername"),
 		Logger: LoggerConfig{
-			Level:  getEnvDefault("LOG_LEVEL", "info"),
-			Format: getEnvDefault("LOG_FORMAT", "text"),
+			Level:  GetEnvDefault("LOG_LEVEL", "info"),
+			Format: GetEnvDefault("LOG_FORMAT", "text"),
 		},
 	}
 
