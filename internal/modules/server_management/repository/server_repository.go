@@ -21,6 +21,7 @@ type ServerRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Server, error)
 	GetByIPv4(ctx context.Context, ipv4 string) (*domain.Server, error)
 	GetByName(ctx context.Context, name string) (*domain.Server, error)
+	FindByNamesOrIPv4s(ctx context.Context, names []string, ipv4s []string) ([]*domain.Server, error)
 
 	Update(ctx context.Context, server *domain.Server) error
 	Delete(ctx context.Context, id string) error

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"strings"
+
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
@@ -131,5 +133,54 @@ func (s *ServerManagementServer) ViewServers(ctx context.Context, req *server_ma
 	return &server_managementv1.ViewServersResponse{
 		TotalCount: totalCount,
 		Servers:    pbServers,
+	}, nil
+}
+
+func (s *ServerManagementServer) ImportServers(ctx context.Context, req *server_managementv1.ImportServersRequest) (*server_managementv1.ImportServersResponse, error) {
+	if req == nil {
+		return nil, gstatus.Error(codes.InvalidArgument, "request is required")
+	}
+
+	result, err := s.serverService.ImportServers(ctx, req.GetFileContent())
+	if err != nil {
+		if err.Error() == "file size exceeds 2MB limit" {
+			return nil, gstatus.Error(codes.InvalidArgument, err.Error())
+		}
+		if err.Error() == "invalid excel file format" || err.Error() == "empty excel file" || strings.HasPrefix(err.Error(), "missing required columns") {
+			return nil, gstatus.Error(codes.InvalidArgument, err.Error())
+		}
+		return nil, gstatus.Error(codes.Internal, err.Error())
+	}
+
+	return &server_managementv1.ImportServersResponse{
+		SuccessCount:      result.SuccessCount,
+		SuccessfulServers: result.SuccessfulServers,
+		FailCount:         result.FailCount,
+		FailedServers:     result.FailedServers,
+	}, nil
+}
+
+func (s *ServerManagementServer) ExportServers(ctx context.Context, req *server_managementv1.ExportServersRequest) (*server_managementv1.ExportServersResponse, error) {
+	if req == nil {
+		return nil, gstatus.Error(codes.InvalidArgument, "request is required")
+	}
+
+	filter := repository.ServerListFilter{
+		Page:          int(req.GetPage()),
+		PageSize:      int(req.GetLimit()),
+		Status:        req.GetFilterStatus(),
+		Name:          req.GetFilterName(),
+		SortBy:        req.GetSortBy(),
+		SortDirection: req.GetSortDirection(),
+	}
+
+	fileBytes, filename, err := s.serverService.ExportServers(ctx, filter)
+	if err != nil {
+		return nil, gstatus.Error(codes.Internal, err.Error())
+	}
+
+	return &server_managementv1.ExportServersResponse{
+		FileContent: fileBytes,
+		Filename:    filename,
 	}, nil
 }
