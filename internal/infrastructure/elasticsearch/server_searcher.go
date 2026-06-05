@@ -8,6 +8,7 @@ import (
 
 	esv8 "github.com/elastic/go-elasticsearch/v8"
 	"server-management-service/internal/modules/server_management/domain"
+	"server-management-service/internal/modules/server_management/repository"
 )
 
 type ServerSearcher struct {
@@ -22,12 +23,12 @@ func NewServerSearcher(client *esv8.Client, index string) *ServerSearcher {
 	}
 }
 
-func (s *ServerSearcher) Search(ctx context.Context, filter domain.ServerSearchFilter) (*domain.ServerSearchResult, error) {
+func (s *ServerSearcher) Search(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error) {
 	query := buildSearchQuery(filter)
 	
 	body, err := json.Marshal(query)
 	if err != nil {
-		return nil, fmt.Errorf("marshal search query: %w", err)
+		return nil, 0, fmt.Errorf("marshal search query: %w", err)
 	}
 
 	res, err := s.client.Search(
@@ -37,12 +38,12 @@ func (s *ServerSearcher) Search(ctx context.Context, filter domain.ServerSearchF
 		s.client.Search.WithTrackTotalHits(true),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("execute search: %w", err)
+		return nil, 0, fmt.Errorf("execute search: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.IsError() {
-		return nil, fmt.Errorf("search error: %s", res.String())
+		return nil, 0, fmt.Errorf("search error: %s", res.String())
 	}
 
 	var esRes struct {
@@ -57,7 +58,7 @@ func (s *ServerSearcher) Search(ctx context.Context, filter domain.ServerSearchF
 	}
 
 	if err := json.NewDecoder(res.Body).Decode(&esRes); err != nil {
-		return nil, fmt.Errorf("decode search response: %w", err)
+		return nil, 0, fmt.Errorf("decode search response: %w", err)
 	}
 
 	servers := make([]*domain.Server, 0, len(esRes.Hits.Hits))
@@ -74,24 +75,21 @@ func (s *ServerSearcher) Search(ctx context.Context, filter domain.ServerSearchF
 		})
 	}
 
-	return &domain.ServerSearchResult{
-		Servers:    servers,
-		TotalCount: esRes.Hits.Total.Value,
-	}, nil
+	return servers, esRes.Hits.Total.Value, nil
 }
 
-func buildSearchQuery(filter domain.ServerSearchFilter) map[string]any {
+func buildSearchQuery(filter repository.ServerListFilter) map[string]any {
 	must := []map[string]any{}
 
-	if filter.FilterStatus != "" {
+	if filter.Status != "" {
 		must = append(must, map[string]any{
 			"term": map[string]any{
-				"current_status": filter.FilterStatus,
+				"current_status": filter.Status,
 			},
 		})
 	}
 
-	if filter.FilterName != "" {
+	if filter.Name != "" {
 		// Fuzzy search for server_name, and wildcard for ipv4
 		must = append(must, map[string]any{
 			"bool": map[string]any{
@@ -99,14 +97,14 @@ func buildSearchQuery(filter domain.ServerSearchFilter) map[string]any {
 					{
 						"match": map[string]any{
 							"server_name": map[string]any{
-								"query":     filter.FilterName,
+								"query":     filter.Name,
 								"fuzziness": "AUTO",
 							},
 						},
 					},
 					{
 						"wildcard": map[string]any{
-							"ipv4": fmt.Sprintf("*%s*", filter.FilterName),
+							"ipv4": fmt.Sprintf("*%s*", filter.Name),
 						},
 					},
 				},
@@ -132,12 +130,12 @@ func buildSearchQuery(filter domain.ServerSearchFilter) map[string]any {
 	if filter.Page < 1 {
 		filter.Page = 1
 	}
-	if filter.Limit < 1 {
-		filter.Limit = 20
+	if filter.PageSize < 1 {
+		filter.PageSize = 20
 	}
 
-	queryBody["from"] = (filter.Page - 1) * filter.Limit
-	queryBody["size"] = filter.Limit
+	queryBody["from"] = (filter.Page - 1) * filter.PageSize
+	queryBody["size"] = filter.PageSize
 
 	// Sorting
 	sortBy := "created_at"
