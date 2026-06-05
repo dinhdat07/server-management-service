@@ -1,13 +1,13 @@
 # **TÀI LIỆU THIẾT KẾ HƯỚNG TÊN MIỀN (DDD) VÀ ĐẶC TẢ EVENT STORMING**
 
-## **HỆ THỐNG QUẢN LÝ SERVER (ACME-SMS) \- CHƯƠNG TRÌNH ĐÀO TẠO Acme PASSPORT**
+## **HỆ THỐNG QUẢN LÝ SERVER (SMS)**
 
 
 # **PHẦN I: DOMAIN MODELING (MÔ HÌNH MIỀN)**
 
 ## **1\. Bản đồ ngữ cảnh (Context Mapping) & Phân rã Subdomain**
 
-Để chuẩn hóa kiến trúc cho hệ thống quản lý hạ tầng quy mô lớn, tên miền tổng quát **Server Management System (ACME-SMS)** được bóc tách và phân rã thành các miền con (Subdomains) và các ngữ cảnh bị giới hạn (Bounded Contexts) biệt lập. Mô hình áp dụng nguyên tắc cô lập dữ liệu (Data Isolation) nhằm đảm bảo khả năng mở rộng quy mô lớn (Horizontal Scaling) mà không gây ra xung đột hay thắt nút cổ chai tại cơ sở dữ liệu.
+Để chuẩn hóa kiến trúc cho hệ thống quản lý hạ tầng quy mô lớn, tên miền tổng quát **Server Management System (SMS)** được bóc tách và phân rã thành các miền con (Subdomains) và các ngữ cảnh bị giới hạn (Bounded Contexts) biệt lập. Mô hình áp dụng nguyên tắc cô lập dữ liệu (Data Isolation) nhằm đảm bảo khả năng mở rộng quy mô lớn (Horizontal Scaling) mà không gây ra xung đột hay thắt nút cổ chai tại cơ sở dữ liệu.
 
 ### **1.1 Phân rã Subdomain (Domain Decomposition)**
 
@@ -29,7 +29,7 @@ Hệ thống Portal Core kế thừa mối quan hệ hướng sự kiện thông
 
 ## **2\. Bảng thuật ngữ miền (Ubiquitous Language)**
 
-Việc thống nhất ngôn ngữ thống nhất là bắt buộc để triệt tiêu sự mơ hồ giữa đội ngũ phát triển sản phẩm (Product) và kỹ sư kiến trúc (Engineers). Các thuật ngữ trong hệ thống ACME-SMS được định nghĩa tường minh dưới đây:
+Việc thống nhất ngôn ngữ thống nhất là bắt buộc để triệt tiêu sự mơ hồ giữa đội ngũ phát triển sản phẩm (Product) và kỹ sư kiến trúc (Engineers). Các thuật ngữ trong hệ thống SMS được định nghĩa tường minh dưới đây:
 
 Dưới đây là toàn bộ thông tin về các thực thể nghiệp vụ hệ thống của bạn đã được chuyển đổi thành dạng bảng Markdown để dễ dàng theo dõi, đối chiếu và tra cứu:
 
@@ -104,7 +104,7 @@ Quản lý các yêu cầu trích xuất tri thức hạ tầng, điều phối 
 
 # **PHẦN II: EVENT STORMING SPECIFICATION (BẢN TẢ SỰ KIỆN BIÊN DỊCH)**
 
-Dưới đây là bảng đặc tả chi tiết toàn bộ các luồng tiến trình nghiệp vụ cốt lõi của hệ thống ACME-SMS
+Dưới đây là bảng đặc tả chi tiết toàn bộ các luồng tiến trình nghiệp vụ cốt lõi của hệ thống SMS
 
 | Phân loại Luồng | Hành động / Lệnh (Command) | Tác nhân & Luật (Actor & Policy) | Sự kiện Tạo ra (Event) | Dữ liệu / Giao diện Đầu vào (Data/UI) |
 | :---- | :---- | :---- | :---- | :---- |
@@ -168,7 +168,7 @@ Luật nghiệp vụ là các quy tắc luôn luôn phải đúng trong suốt v
 
 * **Nguồn dữ liệu gốc:** Truy vấn gộp nâng cao (Elasticsearch Aggregations Engine \- Quét đồng thời Date Histogram kết hợp Range Filters) dựa trên dữ liệu của index: sms\_status\_transition\_logs.  
 * **Thuật toán thực thi cốt lõi:** Quét chuỗi thời gian được giới hạn biên tự động dựa trên mốc sự kiện kết thúc TERMINATED để xử lý triệt để bài toán xóa cứng thiết bị hạ tầng:  
-* **Mục đích phục vụ nghiệp vụ:** Tính toán chính xác tỷ lệ sẵn sàng hoạt động (%) của một thiết bị độc lập hoặc toàn bộ cụm hạ tầng công ty Acme mà không bị tính phạt oan khoảng thời gian sau khi server đã bị xóa cứng ra khỏi hệ thống.
+* **Mục đích phục vụ nghiệp vụ:** Tính toán chính xác tỷ lệ sẵn sàng hoạt động (%) của một thiết bị độc lập hoặc toàn bộ cụm hạ tầng công ty mà không bị tính phạt oan khoảng thời gian sau khi server đã bị xóa cứng ra khỏi hệ thống.
 
 
 ### **2.4 Mô hình Đọc Tổng Hợp Báo Cáo Định Kỳ Hàng Ngày (Daily Summary Report View Model)**
