@@ -85,6 +85,7 @@ graph TD
         SMM["Server Management Module<br>(OLTP CRUD & In-Memory Excel Job)"]
         MM["Monitoring Module<br>(Health Checker Engine)"]
         RM["Reporting Module<br>(Yêu cầu & Quản lý Job)"]
+        RE["Report Consumer<br>(Analytics Worker)"]
     end
     
     subgraph Storage ["Tầng Lưu Trữ & Cache (OLTP)"]
@@ -100,10 +101,6 @@ graph TD
     
     subgraph ReadModel ["CQRS Read Model"]
         ES[("Elasticsearch<br>(Analytics Read Model)")]
-    end
-    
-    subgraph S_Module ["Reporting Module / Analytics Worker"]
-        RE["Report Consumer"]
     end
     
     subgraph NS_Module ["Notification Service (Microservice độc lập)"]
