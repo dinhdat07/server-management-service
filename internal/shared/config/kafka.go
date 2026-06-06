@@ -10,6 +10,7 @@ type KafkaConfig struct {
 	Brokers                    []string
 	NotificationRequestedTopic string
 	ServerTopic                string
+	StatusLogTopic             string
 	ConsumerGroup              string
 }
 
@@ -21,6 +22,7 @@ func LoadKafkaConfig() (KafkaConfig, error) {
 
 		NotificationRequestedTopic: getEnv("KAFKA_NOTIFICATION_REQUESTED_TOPIC", "notification.requested"),
 		ServerTopic:                getEnv("KAFKA_SERVER_TOPIC", "sms.management_schema.servers"),
+		StatusLogTopic:             getEnv("KAFKA_STATUS_LOG_TOPIC", "sms.monitoring_schema.sms_status_transition_logs"),
 
 		ConsumerGroup: getEnv("KAFKA_CONSUMER_GROUP", "portal-server-management-group"),
 	}

@@ -9,6 +9,10 @@ import (
 	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
+	
+	reportingimpl "server-management-service/internal/modules/reporting/repository/impl"
+	reportingsvc "server-management-service/internal/modules/reporting/service"
+	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
 )
 
 func New() (*App, error) {
@@ -46,11 +50,17 @@ func New() (*App, error) {
 	serverSvc := service.NewServerService(serverRepo, serverSearcher)
 	serverHandler := grpcserver.NewServerManagementServer(serverSvc)
 
+	reportingTxManager := reportingimpl.NewGormTxManager(db)
+	reportingRepo := reportingimpl.NewGormOutboxRepository(db)
+	reportingService := reportingsvc.NewReportingService(reportingRepo, reportingTxManager)
+	reportingHandler := reportinggrpc.NewReportingGrpcHandler(reportingService)
+
 	return &App{
-		Config:        cfg,
-		DB:            db,
-		RedisClient:   redisClient,
-		ESClient:      esClient,
-		ServerHandler: serverHandler,
+		Config:           cfg,
+		DB:               db,
+		RedisClient:      redisClient,
+		ESClient:         esClient,
+		ServerHandler:    serverHandler,
+		ReportingHandler: reportingHandler,
 	}, nil
 }

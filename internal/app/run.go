@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/grpc"
 	
+	reportingv1 "server-management-service/gen/go/reporting/v1"
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
 )
 
@@ -32,6 +33,10 @@ func (a *App) Run() error {
 	
 	if a.ServerHandler != nil {
 		server_managementv1.RegisterServerManagementServiceServer(a.GRPCServer, a.ServerHandler)
+	}
+	
+	if a.ReportingHandler != nil {
+		reportingv1.RegisterReportingServiceServer(a.GRPCServer, a.ReportingHandler)
 	}
 
 	// TODO: Replace with proper gateway mux in Phase 2
