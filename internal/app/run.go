@@ -39,6 +39,10 @@ func (a *App) Run() error {
 		reportingv1.RegisterReportingServiceServer(a.GRPCServer, a.ReportingHandler)
 	}
 
+	if a.ReportingWorker != nil {
+		a.ReportingWorker.Start(ctx)
+	}
+
 	// TODO: Replace with proper gateway mux in Phase 2
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +108,10 @@ func (a *App) Shutdown(ctx context.Context) error {
 		if err := a.HTTPServer.Shutdown(shutdownCtx); err != nil {
 			return err
 		}
+	}
+
+	if a.ReportingWorker != nil {
+		a.ReportingWorker.Stop()
 	}
 
 	log.Println("application stopped gracefully")

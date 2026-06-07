@@ -6,7 +6,6 @@ import (
 	"server-management-service/internal/modules/server_management/handler/grpcserver"
 	"server-management-service/internal/modules/server_management/repository/impl"
 	"server-management-service/internal/modules/server_management/service"
-	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
 	
@@ -46,13 +45,12 @@ func New() (*App, error) {
 	}
 
 	serverRepo := impl.NewGormServerRepository(db)
-	serverSearcher := elasticsearch.NewServerSearcher(esClient, esCfg.ServerIndex)
-	serverSvc := service.NewServerService(serverRepo, serverSearcher)
+	serverSvc := service.NewServerService(serverRepo)
 	serverHandler := grpcserver.NewServerManagementServer(serverSvc)
 
-	reportingTxManager := reportingimpl.NewGormTxManager(db)
-	reportingRepo := reportingimpl.NewGormOutboxRepository(db)
-	reportingService := reportingsvc.NewReportingService(reportingRepo, reportingTxManager)
+	reportingRepo := reportingimpl.NewGormReportingRepository(db)
+	reportingWorker := reportingsvc.NewReportingWorker(reportingRepo, esClient, esCfg.ServerIndex, 5)
+	reportingService := reportingsvc.NewReportingService(reportingRepo, reportingWorker)
 	reportingHandler := reportinggrpc.NewReportingGrpcHandler(reportingService)
 
 	return &App{
@@ -62,5 +60,6 @@ func New() (*App, error) {
 		ESClient:         esClient,
 		ServerHandler:    serverHandler,
 		ReportingHandler: reportingHandler,
+		ReportingWorker:  reportingWorker,
 	}, nil
 }

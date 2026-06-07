@@ -15,14 +15,14 @@ type ReportingService interface {
 }
 
 type reportingServiceImpl struct {
-	repo      repository.OutboxRepository
-	txManager repository.TxManager
+	repo   repository.ReportingRepository
+	worker ReportingWorker
 }
 
-func NewReportingService(repo repository.OutboxRepository, txManager repository.TxManager) ReportingService {
+func NewReportingService(repo repository.ReportingRepository, worker ReportingWorker) ReportingService {
 	return &reportingServiceImpl{
-		repo:      repo,
-		txManager: txManager,
+		repo:   repo,
+		worker: worker,
 	}
 }
 
@@ -43,12 +43,18 @@ func (s *reportingServiceImpl) RequestReport(ctx context.Context, email string, 
 
 	correlationID := uuid.New().String()
 
-	req, event, err := domain.NewReportRequest(email, start, end, correlationID)
+	req, err := domain.NewReportRequest(email, start, end, correlationID)
 	if err != nil {
 		return err
 	}
 
-	return s.txManager.WithTx(ctx, func(txCtx context.Context) error {
-		return s.repo.CreateReportRequestWithOutbox(txCtx, req, event)
-	})
+	err = s.repo.CreateReportRequest(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	// Enqueue report request to the worker pool
+	s.worker.EnqueueReport(req)
+
+	return nil
 }
