@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -11,10 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	
 	reportingv1 "server-management-service/gen/go/reporting/v1"
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
+	"server-management-service/internal/infrastructure/security"
+	"server-management-service/internal/shared/middlewares"
 )
 
 func (a *App) Run() error {
@@ -28,8 +33,29 @@ func (a *App) Run() error {
 	grpcAddr := ":" + a.Config.GRPCPort
 	httpAddr := ":" + a.Config.HTTPPort
 
-	// TODO: Replace with proper GRPC server initialization in Phase 2 (Auth Interceptor)
-	a.GRPCServer = grpc.NewServer()
+	authenticator := security.NewAuthenticator(a.Config.JWTSecret, a.RedisClient)
+	authorizer := security.NewAuthorizer()
+
+	publicMethods := map[string]bool{
+		"/grpc.health.v1.Health/Check": true,
+	}
+
+	methodRoles := map[string]string{
+		"/server_management.v1.ServerManagementService/CreateServer":  "ADMIN",
+		"/server_management.v1.ServerManagementService/UpdateServer":  "ADMIN",
+		"/server_management.v1.ServerManagementService/DeleteServer":  "ADMIN",
+		"/server_management.v1.ServerManagementService/ImportServers": "ADMIN",
+		"/server_management.v1.ServerManagementService/ExportServers": "ADMIN",
+		"/server_management.v1.ServerManagementService/ViewServers":   "", // allow any logged-in user
+		"/reporting.v1.ReportingService/RequestReport":                "ADMIN",
+	}
+
+	a.GRPCServer = grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			middlewares.AuthenticationInterceptor(authenticator, publicMethods),
+			middlewares.PermissionInterceptor(authorizer, methodRoles),
+		),
+	)
 	
 	if a.ServerHandler != nil {
 		server_managementv1.RegisterServerManagementServiceServer(a.GRPCServer, a.ServerHandler)
@@ -43,12 +69,25 @@ func (a *App) Run() error {
 		a.ReportingWorker.Start(ctx)
 	}
 
-	// TODO: Replace with proper gateway mux in Phase 2
+	gwmux := runtime.NewServeMux()
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+
+	if err := server_managementv1.RegisterServerManagementServiceHandlerFromEndpoint(ctx, gwmux, grpcAddr, opts); err != nil {
+		return fmt.Errorf("failed to register server management gateway: %w", err)
+	}
+
+	if err := reportingv1.RegisterReportingServiceHandlerFromEndpoint(ctx, gwmux, grpcAddr, opts); err != nil {
+		return fmt.Errorf("failed to register reporting gateway: %w", err)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
+	
+	// Mount the gRPC gateway to the root of the HTTP server
+	mux.Handle("/", gwmux)
 
 	a.HTTPServer = &http.Server{
 		Addr:    httpAddr,

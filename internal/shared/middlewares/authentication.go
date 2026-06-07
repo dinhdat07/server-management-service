@@ -1,11 +1,11 @@
-package interceptor
+package middlewares
 
 import (
 	"context"
 	"errors"
 	"strings"
 
-	"server-management-service/internal/modules/server_management/handler/grpcserver/grpcctx"
+	"server-management-service/internal/shared/grpcctx"
 	"server-management-service/internal/infrastructure/security"
 
 	"google.golang.org/grpc"
