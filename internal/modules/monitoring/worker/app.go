@@ -13,6 +13,7 @@ import (
 	"server-management-service/internal/modules/monitoring/service"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
+	"server-management-service/internal/infrastructure/elasticsearch"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -49,10 +50,18 @@ func NewApp() (*App, error) {
 		return nil, fmt.Errorf("redis ping failed: %w", err)
 	}
 
+	// Initialize Elasticsearch
+	esCfg := config.LoadElasticsearchConfig()
+	esClient, err := database.NewElasticsearchClient(context.Background(), []string{esCfg.URL})
+	if err != nil {
+		return nil, fmt.Errorf("elasticsearch connection failed: %w", err)
+	}
+	esLogger := elasticsearch.NewObservationLogger(esClient, esCfg.ServerIndex)
+
 	// Initialize Dependencies
 	repo := impl.NewGormMonitoringRepository(db)
-	txManager := impl.NewGormTxManager(db)
-	monService := service.NewMonitoringService(repo, redisClient, txManager)
+	threshold, _ := config.GetEnvInt("MONITORING_FAILURE_THRESHOLD", 2)
+	monService := service.NewMonitoringService(repo, redisClient, esLogger, threshold)
 
 	// Unprivileged ping for non-root environments (Set to true if running as root on Linux)
 	privilegedStr := os.Getenv("ICMP_PRIVILEGED")

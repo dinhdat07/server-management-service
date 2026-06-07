@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"server-management-service/internal/modules/monitoring/domain"
+	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/monitoring/repository"
 	serverDomain "server-management-service/internal/modules/server_management/domain"
 
@@ -17,20 +17,30 @@ type MonitoringService interface {
 }
 
 type monitoringServiceImpl struct {
-	repo      repository.MonitoringRepository
-	rdb       redis.UniversalClient
-	txManager repository.TxManager
+	repo             repository.MonitoringRepository
+	rdb              redis.UniversalClient
+	esLogger         elasticsearch.ObservationLogger
+	failureThreshold int
 }
 
-func NewMonitoringService(repo repository.MonitoringRepository, rdb redis.UniversalClient, txManager repository.TxManager) MonitoringService {
+func NewMonitoringService(repo repository.MonitoringRepository, rdb redis.UniversalClient, esLogger elasticsearch.ObservationLogger, failureThreshold int) MonitoringService {
 	return &monitoringServiceImpl{
-		repo:      repo,
-		rdb:       rdb,
-		txManager: txManager,
+		repo:             repo,
+		rdb:              rdb,
+		esLogger:         esLogger,
+		failureThreshold: failureThreshold,
 	}
 }
 
 func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, ip string, pingSuccess bool) error {
+	// 1. Log observation directly to Elasticsearch (Time-Series)
+	// We MUST log every single ping attempt to ES to calculate Uptime later
+	err := s.esLogger.LogObservation(ctx, serverID, pingSuccess)
+	if err != nil {
+		// Log the error but don't fail the rest of the evaluation
+		fmt.Printf("failed to log observation to ES for server %s: %v\n", serverID, err)
+	}
+
 	redisKey := fmt.Sprintf("server:info:%s", serverID)
 
 	// Fetch current status and retry count from Redis
@@ -58,7 +68,6 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 	// State Machine Evaluation
 	var newStatus serverDomain.ServerStatus
 	var statusChanged bool
-	var reason string
 
 	if pingSuccess {
 		if currentStatus == serverDomain.ServerStatusOffline {
@@ -66,7 +75,6 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 			newStatus = serverDomain.ServerStatusOnline
 			statusChanged = true
 			retryCount = 0
-			reason = "ICMP Ping Succeeded (Recovery)"
 		} else {
 			// Already online, reset retry count if > 0
 			retryCount = 0
@@ -74,11 +82,10 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 	} else {
 		if currentStatus == serverDomain.ServerStatusOnline {
 			retryCount++
-			if retryCount >= 2 { // Failure Threshold = 2
+			if retryCount >= s.failureThreshold {
 				newStatus = serverDomain.ServerStatusOffline
 				statusChanged = true
 				retryCount = 0
-				reason = "ICMP Ping Failed 2 consecutive times"
 			}
 		} else {
 			// Already offline
@@ -96,20 +103,17 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 		return fmt.Errorf("failed to update redis status: %w", err)
 	}
 
-	// Persist the transition and update Postgres
+	// Update Postgres ONLY if state actually changes
 	if statusChanged {
-		event := &domain.StatusTransitionEvent{
-			ServerID:       serverID,
-			PreviousStatus: string(currentStatus),
-			CurrentStatus:  string(newStatus),
-			Reason:         reason,
-		}
-
-		err = s.txManager.WithTx(ctx, func(txCtx context.Context) error {
-			return s.repo.SaveTransitionAndUpdateServer(txCtx, event, newStatus)
-		})
+		err = s.repo.UpdateServerStatus(ctx, serverID, newStatus, retryCount)
 		if err != nil {
-			return fmt.Errorf("failed to save transition to db: %w", err)
+			return fmt.Errorf("failed to update server status in postgres: %w", err)
+		}
+	} else if retryCount > 0 && !pingSuccess && currentStatus == serverDomain.ServerStatusOnline {
+		// Update consecutive failures even if status hasn't changed to offline yet
+		err = s.repo.UpdateServerStatus(ctx, serverID, currentStatus, retryCount)
+		if err != nil {
+			return fmt.Errorf("failed to update consecutive failures in postgres: %w", err)
 		}
 	}
 

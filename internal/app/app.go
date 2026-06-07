@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"server-management-service/internal/modules/server_management/handler/grpcserver"
-	reportinggrpc "server-management-service/internal/modules/reporting/handler"
+	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
 )
 
 type App struct {
@@ -22,7 +22,7 @@ type App struct {
 	HTTPServer *http.Server
 
 	RedisClient   redis.UniversalClient
-	ESClient      *elasticsearch.Client
+	ESClient      *elasticsearch.TypedClient
 	KafkaBrokers  []string
 	ServerHandler    *grpcserver.ServerManagementServer
 	ReportingHandler *reportinggrpc.ReportingGrpcHandler

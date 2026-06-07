@@ -3,44 +3,27 @@ package impl
 import (
 	"context"
 
-	"server-management-service/internal/modules/monitoring/domain"
 	"server-management-service/internal/modules/monitoring/repository"
 	serverDomain "server-management-service/internal/modules/server_management/domain"
 
 	"gorm.io/gorm"
 )
 
-type GormMonitoringRepository struct {
+type gormMonitoringRepository struct {
 	db *gorm.DB
 }
 
 func NewGormMonitoringRepository(db *gorm.DB) repository.MonitoringRepository {
-	return &GormMonitoringRepository{db: db}
-}
-
-func (r *GormMonitoringRepository) getDB(ctx context.Context) *gorm.DB {
-	if tx, ok := ctx.Value(txKey{}).(*gorm.DB); ok {
-		return tx.WithContext(ctx)
+	return &gormMonitoringRepository{
+		db: db,
 	}
-	return r.db.WithContext(ctx)
 }
 
-func (r *GormMonitoringRepository) SaveTransitionAndUpdateServer(ctx context.Context, event *domain.StatusTransitionEvent, newStatus serverDomain.ServerStatus) error {
-	db := r.getDB(ctx)
-
-	serverUpdateResult := db.Model(&serverDomain.Server{}).
-		Where("server_id = ?", event.ServerID).
+func (r *gormMonitoringRepository) UpdateServerStatus(ctx context.Context, serverID string, newStatus serverDomain.ServerStatus, consecutiveFailures int) error {
+	return r.db.WithContext(ctx).Model(&serverDomain.Server{}).
+		Where("server_id = ?", serverID).
 		Updates(map[string]interface{}{
 			"current_status":       newStatus,
-			"consecutive_failures": 0,
-		})
-	if serverUpdateResult.Error != nil {
-		return serverUpdateResult.Error
-	}
-
-	if err := db.Create(event).Error; err != nil {
-		return err
-	}
-
-	return nil
+			"consecutive_failures": consecutiveFailures,
+		}).Error
 }
