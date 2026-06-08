@@ -12,6 +12,17 @@ import (
 	reportingimpl "server-management-service/internal/modules/reporting/repository/impl"
 	reportingsvc "server-management-service/internal/modules/reporting/service"
 	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
+
+	"server-management-service/internal/modules/notification/infrastructure/smtp"
+	notificationsvc "server-management-service/internal/modules/notification/service"
+	"server-management-service/internal/modules/identity/domain"
+	"server-management-service/internal/infrastructure/security"
+	authgrpc "server-management-service/internal/modules/identity/handler/grpcserver"
+	authrepo "server-management-service/internal/modules/identity/repository/impl"
+	authsvc "server-management-service/internal/modules/identity/service"
+	
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func New() (*App, error) {
@@ -25,6 +36,16 @@ func New() (*App, error) {
 		log.Printf("failed to connect to database: %v", err)
 		return nil, err
 	}
+
+	// AutoMigrate Identity
+	db.AutoMigrate(
+		&domain.User{},
+		&domain.AuthSession{},
+		&domain.RefreshToken{},
+	)
+
+	// Seeder
+	seedUsers(db, cfg.AdminEmail, cfg.AdminPassword, cfg.UserEmail, cfg.UserPassword)
 
 	redisCfg, err := config.LoadRedisConfig()
 	if err != nil {
@@ -48,10 +69,33 @@ func New() (*App, error) {
 	serverSvc := service.NewServerService(serverRepo)
 	serverHandler := grpcserver.NewServerManagementServer(serverSvc)
 
+	smtpConfig := smtp.Config{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		UseAuth:  cfg.SMTP.UseAuth,
+		UseTLS:   cfg.SMTP.UseTLS,
+		Username: cfg.SMTP.Username,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+		FromName: cfg.SMTP.FromName,
+	}
+	smtpMailer := smtp.NewMailer(smtpConfig)
+	notificationService := notificationsvc.NewNotificationService(smtpMailer)
+
 	reportingRepo := reportingimpl.NewGormReportingRepository(db)
-	reportingWorker := reportingsvc.NewReportingWorker(reportingRepo, esClient, esCfg.ServerIndex, 5)
+	reportingWorker := reportingsvc.NewReportingWorker(reportingRepo, esClient, esCfg.ServerIndex, cfg.Reporting.WorkerCount, cfg.Reporting.JobQueueSize, notificationService)
 	reportingService := reportingsvc.NewReportingService(reportingRepo, reportingWorker)
 	reportingHandler := reportinggrpc.NewReportingGrpcHandler(reportingService)
+
+	// Identity Service
+	userRepo := authrepo.NewUserRepository(db)
+	sessionRepo := authrepo.NewAuthSessionRepository(db)
+	refreshRepo := authrepo.NewRefreshTokenRepository(db)
+	revoStore := authrepo.NewSessionRevocationStore(redisClient)
+	tokenMgr := security.NewTokenManager(cfg.JWTSecret)
+	
+	authService := authsvc.NewAuthService(userRepo, sessionRepo, refreshRepo, revoStore, tokenMgr)
+	authHandler := authgrpc.NewAuthServer(authService)
 
 	return &App{
 		Config:           cfg,
@@ -61,5 +105,31 @@ func New() (*App, error) {
 		ServerHandler:    serverHandler,
 		ReportingHandler: reportingHandler,
 		ReportingWorker:  reportingWorker,
+		AuthHandler:      authHandler,
+		NotificationService: notificationService,
 	}, nil
+}
+
+func seedUsers(db *gorm.DB, adminEmail, adminPassword, userEmail, userPassword string) {
+	if adminEmail == "" || adminPassword == "" {
+		log.Println("Admin credentials not set, skipping admin seeder.")
+	} else {
+		seedSingleUser(db, adminEmail, adminPassword, "ADMIN")
+	}
+
+	if userEmail == "" || userPassword == "" {
+		log.Println("User credentials not set, skipping user seeder.")
+	} else {
+		seedSingleUser(db, userEmail, userPassword, "USER")
+	}
+}
+
+func seedSingleUser(db *gorm.DB, email, password, role string) {
+	var count int64
+	db.Model(&domain.User{}).Where("email = ?", email).Count(&count)
+	if count == 0 {
+		log.Printf("Seeding default %s user...", role)
+		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		db.Create(&domain.User{Email: email, Password: string(hash), RoleCode: role})
+	}
 }

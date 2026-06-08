@@ -16,9 +16,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	
+	authv1 "server-management-service/gen/go/auth/v1"
 	reportingv1 "server-management-service/gen/go/reporting/v1"
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
+	"server-management-service/internal/infrastructure/gateway"
 	"server-management-service/internal/infrastructure/security"
+	"server-management-service/internal/shared/logger"
 	"server-management-service/internal/shared/middlewares"
 )
 
@@ -33,11 +36,16 @@ func (a *App) Run() error {
 	grpcAddr := ":" + a.Config.GRPCPort
 	httpAddr := ":" + a.Config.HTTPPort
 
+	// Initialize Logger
+	logger.InitLogger()
+
 	authenticator := security.NewAuthenticator(a.Config.JWTSecret, a.RedisClient)
 	authorizer := security.NewAuthorizer()
 
 	publicMethods := map[string]bool{
 		"/grpc.health.v1.Health/Check": true,
+		"/portal.auth.v1.AuthService/Login": true,
+		"/portal.auth.v1.AuthService/RefreshToken": true,
 	}
 
 	methodRoles := map[string]string{
@@ -65,11 +73,18 @@ func (a *App) Run() error {
 		reportingv1.RegisterReportingServiceServer(a.GRPCServer, a.ReportingHandler)
 	}
 
+	if a.AuthHandler != nil {
+		authv1.RegisterAuthServiceServer(a.GRPCServer, a.AuthHandler)
+	}
+
 	if a.ReportingWorker != nil {
 		a.ReportingWorker.Start(ctx)
 	}
 
-	gwmux := runtime.NewServeMux()
+	gwmux := runtime.NewServeMux(
+		runtime.WithIncomingHeaderMatcher(gateway.CustomIncomingMatcher),
+		runtime.WithOutgoingHeaderMatcher(gateway.CustomOutgoingMatcher),
+	)
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 
 	if err := server_managementv1.RegisterServerManagementServiceHandlerFromEndpoint(ctx, gwmux, grpcAddr, opts); err != nil {
@@ -80,14 +95,18 @@ func (a *App) Run() error {
 		return fmt.Errorf("failed to register reporting gateway: %w", err)
 	}
 
+	if err := authv1.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, grpcAddr, opts); err != nil {
+		return fmt.Errorf("failed to register auth gateway: %w", err)
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 	
-	// Mount the gRPC gateway to the root of the HTTP server
-	mux.Handle("/", gwmux)
+	// Mount the gRPC gateway to the root of the HTTP server with middleware
+	mux.Handle("/", gateway.CookieMiddleware(gwmux))
 
 	a.HTTPServer = &http.Server{
 		Addr:    httpAddr,
