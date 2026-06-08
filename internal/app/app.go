@@ -13,6 +13,8 @@ import (
 	"server-management-service/internal/modules/server_management/handler/grpcserver"
 	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
 	reportingsvc "server-management-service/internal/modules/reporting/service"
+	authgrpc "server-management-service/internal/modules/identity/handler/grpcserver"
+	notificationsvc "server-management-service/internal/modules/notification/service"
 )
 
 type App struct {
@@ -28,4 +30,6 @@ type App struct {
 	ServerHandler    *grpcserver.ServerManagementServer
 	ReportingHandler *reportinggrpc.ReportingGrpcHandler
 	ReportingWorker  reportingsvc.ReportingWorker
+	AuthHandler      *authgrpc.AuthServer
+	NotificationService *notificationsvc.NotificationService
 }
