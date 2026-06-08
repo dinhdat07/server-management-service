@@ -26,19 +26,24 @@ type reportingWorkerImpl struct {
 	esIndex     string
 	jobQueue    chan *domain.ReportRequest
 	workerCount int
+	notifier    domain.ReportNotifier
 	wg          sync.WaitGroup
 }
 
-func NewReportingWorker(repo repository.ReportingRepository, esClient *esv8.TypedClient, esIndex string, workerCount int) ReportingWorker {
+func NewReportingWorker(repo repository.ReportingRepository, esClient *esv8.TypedClient, esIndex string, workerCount int, jobQueueSize int, notifier domain.ReportNotifier) ReportingWorker {
 	if workerCount <= 0 {
 		workerCount = 5 // Default to 5 concurrent workers
+	}
+	if jobQueueSize <= 0 {
+		jobQueueSize = 100 // Default to 100 capacity
 	}
 	return &reportingWorkerImpl{
 		repo:        repo,
 		esClient:    esClient,
 		esIndex:     esIndex,
-		jobQueue:    make(chan *domain.ReportRequest, 100), // Buffered queue
+		jobQueue:    make(chan *domain.ReportRequest, jobQueueSize), // Buffered queue
 		workerCount: workerCount,
+		notifier:    notifier,
 	}
 }
 
@@ -130,7 +135,14 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 
 	log.Printf("[ReportingWorker] Sending email to %s:\n%s", req.RequestorEmail, html)
 	
-	// TODO: Call Notification Service via gRPC
+	// Call internal Notification Service
+	if w.notifier != nil {
+		err := w.notifier.SendReportEmail(ctx, req.RequestorEmail, "Daily Server Status Report", html)
+		if err != nil {
+			log.Printf("[ReportingWorker] Error sending email: %v", err)
+			return fmt.Errorf("failed to send email: %w", err)
+		}
+	}
 	
 	return nil
 }
