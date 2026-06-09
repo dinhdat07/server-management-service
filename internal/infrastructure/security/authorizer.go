@@ -1,9 +1,12 @@
 package security
 
-import "context"
+import (
+	"context"
+	"server-management-service/internal/modules/identity/domain"
+)
 
 type Authorizer struct {
-	rolePermissions map[string]map[PermissionCode]bool
+	rolePermissions map[domain.RoleCode]map[PermissionCode]bool
 }
 
 func NewAuthorizer() *Authorizer {
@@ -23,9 +26,9 @@ func NewAuthorizer() *Authorizer {
 	}
 
 	return &Authorizer{
-		rolePermissions: map[string]map[PermissionCode]bool{
-			"ADMIN": adminPerms,
-			"USER":  userPerms,
+		rolePermissions: map[domain.RoleCode]map[PermissionCode]bool{
+			domain.RoleCodeAdmin: adminPerms,
+			domain.RoleCodeUser:  userPerms,
 		},
 	}
 }
@@ -40,7 +43,7 @@ func (a *Authorizer) HasPermission(ctx context.Context, principal *Principal, re
 	}
 
 	// Always grant if ADMIN
-	if principal.RoleCode == "ADMIN" {
+	if principal.RoleCode == domain.RoleCodeAdmin {
 		return true
 	}
 

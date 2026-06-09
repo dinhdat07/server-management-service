@@ -150,17 +150,17 @@ func seedUsers(db *gorm.DB, adminEmail, adminPassword, userEmail, userPassword s
 	if adminEmail == "" || adminPassword == "" {
 		log.Println("Admin credentials not set, skipping admin seeder.")
 	} else {
-		seedSingleUser(db, adminEmail, adminPassword, "ADMIN")
+		seedSingleUser(db, adminEmail, adminPassword, domain.RoleCodeAdmin)
 	}
 
 	if userEmail == "" || userPassword == "" {
 		log.Println("User credentials not set, skipping user seeder.")
 	} else {
-		seedSingleUser(db, userEmail, userPassword, "USER")
+		seedSingleUser(db, userEmail, userPassword, domain.RoleCodeUser)
 	}
 }
 
-func seedSingleUser(db *gorm.DB, email, password, role string) {
+func seedSingleUser(db *gorm.DB, email, password string, role domain.RoleCode) {
 	var count int64
 	db.Model(&domain.User{}).Where("email = ?", email).Count(&count)
 	if count == 0 {

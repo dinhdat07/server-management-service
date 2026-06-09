@@ -8,11 +8,12 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"server-management-service/internal/modules/identity/domain"
 )
 
 type TokenManager interface {
 	HashToken(token string) string
-	GenerateAccessToken(userID uint, roleCode string, sessionID uuid.UUID) (string, error)
+	GenerateAccessToken(userID uint, roleCode domain.RoleCode, sessionID uuid.UUID) (string, error)
 	GenerateRefreshToken() string
 }
 
@@ -30,7 +31,7 @@ func (t *tokenManagerImpl) HashToken(token string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (t *tokenManagerImpl) GenerateAccessToken(userID uint, roleCode string, sessionID uuid.UUID) (string, error) {
+func (t *tokenManagerImpl) GenerateAccessToken(userID uint, roleCode domain.RoleCode, sessionID uuid.UUID) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id":    fmt.Sprintf("%d", userID),
 		"role_code":  roleCode,
