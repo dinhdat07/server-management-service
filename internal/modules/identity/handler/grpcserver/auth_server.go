@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	authv1 "server-management-service/gen/go/auth/v1"
-	commonv1 "server-management-service/gen/go/common/v1"
 	"server-management-service/internal/infrastructure/security"
 	"server-management-service/internal/shared/grpcctx"
 
@@ -80,7 +79,7 @@ func (s *AuthServer) Login(ctx context.Context, req *authv1.LoginRequest) (*auth
 	}, nil
 }
 
-func (s *AuthServer) Logout(ctx context.Context, req *authv1.LogoutRequest) (*commonv1.MessageResponse, error) {
+func (s *AuthServer) Logout(ctx context.Context, req *authv1.LogoutRequest) (*authv1.LogoutResponse, error) {
 	principal, ok := grpcctx.GetPrincipal(ctx)
 	if ok && principal != nil && principal.SessionID != "" {
 		_ = s.authService.Logout(ctx, principal.SessionID)
@@ -92,7 +91,7 @@ func (s *AuthServer) Logout(ctx context.Context, req *authv1.LogoutRequest) (*co
 		"Clear-Cookie", "csrf_token",
 	))
 
-	return &commonv1.MessageResponse{
+	return &authv1.LogoutResponse{
 		Message: "Logout successful",
 	}, nil
 }
@@ -127,7 +126,7 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authv1.RefreshReques
 	}, nil
 }
 
-func (s *AuthServer) LogoutAll(ctx context.Context, req *authv1.LogoutAllRequest) (*commonv1.MessageResponse, error) {
+func (s *AuthServer) LogoutAll(ctx context.Context, req *authv1.LogoutAllRequest) (*authv1.LogoutAllResponse, error) {
 	principal, ok := grpcctx.GetPrincipal(ctx)
 	if ok && principal != nil && principal.UserID != "" {
 		var userID uint
@@ -143,7 +142,7 @@ func (s *AuthServer) LogoutAll(ctx context.Context, req *authv1.LogoutAllRequest
 		"Clear-Cookie", "csrf_token",
 	))
 
-	return &commonv1.MessageResponse{
+	return &authv1.LogoutAllResponse{
 		Message: "Logout all successful",
 	}, nil
 }

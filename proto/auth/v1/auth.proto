@@ -5,7 +5,6 @@ package portal.auth.v1;
 option go_package = "portal-system/gen/go/auth/v1;authv1";
 
 import "google/api/annotations.proto";
-import "common/v1/common.proto";
 import "buf/validate/validate.proto";
 
 
@@ -26,14 +25,14 @@ service AuthService {
     };
   }
 
-  rpc Logout(LogoutRequest) returns (portal.common.v1.MessageResponse) {
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
     option (google.api.http) = {
       post: "/api/v1/auth/logout"
       body: "*"
     };
   }
 
-  rpc LogoutAll(LogoutAllRequest) returns (portal.common.v1.MessageResponse) {
+  rpc LogoutAll(LogoutAllRequest) returns (LogoutAllResponse) {
     option (google.api.http) = {
       post: "/api/v1/auth/logout-all"
       body: "*"
@@ -69,7 +68,15 @@ message RefreshRequest {
 
 message LogoutRequest {}
 
+message LogoutResponse {
+  string message = 1;
+}
+
 message LogoutAllRequest {}
+
+message LogoutAllResponse {
+  string message = 1;
+}
 
 message RefreshResponse {
   string access_token = 1;
@@ -83,5 +90,4 @@ message LoginResponse {
   string refresh_token = 2;
   string token_type = 3;
   int64 expires_in = 4;
-  portal.common.v1.User user = 5;
 }
