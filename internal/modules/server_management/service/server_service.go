@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 
 	"server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/modules/server_management/domain"
@@ -83,7 +84,9 @@ func (s *serverService) CreateServer(ctx context.Context, input CreateServerInpu
 
 	// Dual-Write to Redis
 	if s.cache != nil {
-		_ = s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), 0)
+		if err := s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), 0); err != nil {
+			log.Printf("[WARNING] DB Create succeeded but Redis sync failed for ServerID %s: %v", server.ServerID, err)
+		}
 	}
 
 	return server, nil
@@ -130,7 +133,9 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 
 	// Dual-Write to Redis
 	if s.cache != nil {
-		_ = s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), server.ConsecutiveFailures)
+		if err := s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), server.ConsecutiveFailures); err != nil {
+			log.Printf("[WARNING] DB Update succeeded but Redis sync failed for ServerID %s: %v", server.ServerID, err)
+		}
 	}
 
 	return server, nil
@@ -158,7 +163,9 @@ func (s *serverService) DeleteServer(ctx context.Context, id string) error {
 
 	// Dual-Write to Redis
 	if s.cache != nil {
-		_ = s.cache.Delete(ctx, id)
+		if err := s.cache.Delete(ctx, id); err != nil {
+			log.Printf("[WARNING] DB Delete succeeded but Redis sync failed for ServerID %s: %v", id, err)
+		}
 	}
 
 	return nil

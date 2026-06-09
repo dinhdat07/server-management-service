@@ -47,6 +47,38 @@ func (c *ServerCache) Upsert(ctx context.Context, id, ipv4, status string, retry
 	return nil
 }
 
+type CacheUpsertItem struct {
+	ID         string
+	IPv4       string
+	Status     string
+	RetryCount int
+}
+
+// BatchUpsert adds/updates multiple servers in the cache using a Pipeline
+func (c *ServerCache) BatchUpsert(ctx context.Context, items []CacheUpsertItem) error {
+	if c.client == nil || len(items) == 0 {
+		return nil
+	}
+
+	pipeline := c.client.Pipeline()
+	for _, item := range items {
+		infoKey := fmt.Sprintf(ServerInfoKeyFmt, item.ID)
+		pipeline.HSet(ctx, infoKey, map[string]interface{}{
+			"ipv4":        item.IPv4,
+			"status":      item.Status,
+			"retry_count": item.RetryCount,
+		})
+		pipeline.SAdd(ctx, ServerAllIDsKey, item.ID)
+	}
+
+	_, err := pipeline.Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("redis pipeline batch upsert: %w", err)
+	}
+
+	return nil
+}
+
 // Delete removes the server from the cache
 func (c *ServerCache) Delete(ctx context.Context, id string) error {
 	if c.client == nil {
