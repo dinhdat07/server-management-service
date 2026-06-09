@@ -38,17 +38,17 @@ type ServerService interface {
 	UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error)
 	DeleteServer(ctx context.Context, id string) error
 	SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error)
-	
+
 	ImportServers(ctx context.Context, fileBytes []byte) (*ImportResult, error)
 	ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error)
 }
 
 type serverService struct {
 	repo  repository.ServerRepository
-	cache *redis.ServerCache
+	cache redis.CacheManager
 }
 
-func NewServerService(repo repository.ServerRepository, cache *redis.ServerCache) ServerService {
+func NewServerService(repo repository.ServerRepository, cache redis.CacheManager) ServerService {
 	return &serverService{
 		repo:  repo,
 		cache: cache,
@@ -178,7 +178,7 @@ func (s *serverService) SearchServers(ctx context.Context, filter repository.Ser
 	if filter.PageSize < 1 || filter.PageSize > 100 {
 		filter.PageSize = 20
 	}
-	
+
 	if filter.Status != "" && !domain.ServerStatus(filter.Status).IsValid() {
 		return nil, 0, errors.New("invalid status filter")
 	}

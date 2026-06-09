@@ -1,10 +1,14 @@
 package domain
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var ErrInvalidEmail = errors.New("invalid email address")
 
 const (
 	ReportStatusPending    = "PENDING"
@@ -31,8 +35,12 @@ func (ReportRequest) TableName() string {
 
 // NewReportRequest is a factory function to create a new report request
 func NewReportRequest(requestorEmail string, startTime, endTime time.Time, correlationID string) (*ReportRequest, error) {
+	if strings.TrimSpace(requestorEmail) == "" {
+		return nil, ErrInvalidEmail
+	}
+
 	requestID := uuid.New()
-	
+
 	req := &ReportRequest{
 		ID:             requestID,
 		RequestorEmail: requestorEmail,
