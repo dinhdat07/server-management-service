@@ -31,7 +31,7 @@ type GRPCServerDeps struct {
 
 func NewGRPCServer(deps GRPCServerDeps) *grpc.Server {
 	publicMethods := buildGRPCPublicMethods()
-	methodRoles := buildGRPCMethodRoles()
+	methodPermissions := buildGRPCMethodPermissions()
 
 	s := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
@@ -41,7 +41,7 @@ func NewGRPCServer(deps GRPCServerDeps) *grpc.Server {
 			middlewares.CSRFInterceptor(deps.CSRFManager),
 			middlewares.AuthenticationInterceptor(deps.Authenticator, publicMethods),
 			middlewares.PostAuthRateLimitInterceptor(deps.RateLimiter, deps.RateLimitKeyBuilder, deps.RateLimitConfig),
-			middlewares.PermissionInterceptor(deps.Authorizer, methodRoles),
+			middlewares.PermissionInterceptor(deps.Authorizer, methodPermissions),
 		),
 	)
 
@@ -66,14 +66,14 @@ func buildGRPCPublicMethods() map[string]bool {
 	}
 }
 
-func buildGRPCMethodRoles() map[string]string {
-	return map[string]string{
-		"/server_management.v1.ServerManagementService/CreateServer":  "ADMIN",
-		"/server_management.v1.ServerManagementService/UpdateServer":  "ADMIN",
-		"/server_management.v1.ServerManagementService/DeleteServer":  "ADMIN",
-		"/server_management.v1.ServerManagementService/ImportServers": "ADMIN",
-		"/server_management.v1.ServerManagementService/ExportServers": "ADMIN",
-		"/server_management.v1.ServerManagementService/ViewServers":   "", // allow any logged-in user
-		"/reporting.v1.ReportingService/RequestReport":                "ADMIN",
+func buildGRPCMethodPermissions() map[string]security.PermissionCode {
+	return map[string]security.PermissionCode{
+		"/server_management.v1.ServerManagementService/CreateServer":  security.PermServerCreate,
+		"/server_management.v1.ServerManagementService/UpdateServer":  security.PermServerUpdate,
+		"/server_management.v1.ServerManagementService/DeleteServer":  security.PermServerDelete,
+		"/server_management.v1.ServerManagementService/ImportServers": security.PermServerImport,
+		"/server_management.v1.ServerManagementService/ExportServers": security.PermServerExport,
+		"/server_management.v1.ServerManagementService/ViewServers":   security.PermServerRead,
+		"/reporting.v1.ReportingService/RequestReport":                security.PermReportRequest,
 	}
 }
