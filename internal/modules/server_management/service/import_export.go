@@ -106,6 +106,13 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 			if err := s.repo.BatchCreate(ctx, validServers); err != nil {
 				return fmt.Errorf("batch create failed: %w", err)
 			}
+
+			// Dual-Write to Redis
+			if s.cache != nil {
+				for _, srv := range validServers {
+					_ = s.cache.Upsert(ctx, srv.ServerID, srv.IPv4, string(srv.CurrentStatus), 0)
+				}
+			}
 		}
 
 		batch = batch[:0] // clear batch

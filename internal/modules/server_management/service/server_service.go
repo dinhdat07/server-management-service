@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
 )
@@ -42,12 +43,14 @@ type ServerService interface {
 }
 
 type serverService struct {
-	repo repository.ServerRepository
+	repo  repository.ServerRepository
+	cache *redis.ServerCache
 }
 
-func NewServerService(repo repository.ServerRepository) ServerService {
+func NewServerService(repo repository.ServerRepository, cache *redis.ServerCache) ServerService {
 	return &serverService{
-		repo: repo,
+		repo:  repo,
+		cache: cache,
 	}
 }
 
@@ -76,6 +79,11 @@ func (s *serverService) CreateServer(ctx context.Context, input CreateServerInpu
 	err = s.repo.Create(ctx, server)
 	if err != nil {
 		return nil, err
+	}
+
+	// Dual-Write to Redis
+	if s.cache != nil {
+		_ = s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), 0)
 	}
 
 	return server, nil
@@ -120,6 +128,11 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 		return nil, err
 	}
 
+	// Dual-Write to Redis
+	if s.cache != nil {
+		_ = s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), server.ConsecutiveFailures)
+	}
+
 	return server, nil
 }
 
@@ -142,6 +155,12 @@ func (s *serverService) DeleteServer(ctx context.Context, id string) error {
 		}
 		return err
 	}
+
+	// Dual-Write to Redis
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, id)
+	}
+
 	return nil
 }
 
