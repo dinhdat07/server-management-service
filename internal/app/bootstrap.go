@@ -9,6 +9,8 @@ import (
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
 	
+	infraRedis "server-management-service/internal/infrastructure/redis"
+	
 	reportingimpl "server-management-service/internal/modules/reporting/repository/impl"
 	reportingsvc "server-management-service/internal/modules/reporting/service"
 	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
@@ -66,7 +68,8 @@ func New() (*App, error) {
 	}
 
 	serverRepo := impl.NewGormServerRepository(db)
-	serverSvc := service.NewServerService(serverRepo)
+	serverCache := infraRedis.NewServerCache(redisClient)
+	serverSvc := service.NewServerService(serverRepo, serverCache)
 	serverHandler := grpcserver.NewServerManagementServer(serverSvc)
 
 	smtpConfig := smtp.Config{

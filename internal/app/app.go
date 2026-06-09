@@ -26,7 +26,6 @@ type App struct {
 
 	RedisClient   redis.UniversalClient
 	ESClient      *elasticsearch.TypedClient
-	KafkaBrokers  []string
 	ServerHandler    *grpcserver.ServerManagementServer
 	ReportingHandler *reportinggrpc.ReportingGrpcHandler
 	ReportingWorker  reportingsvc.ReportingWorker
