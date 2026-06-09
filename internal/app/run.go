@@ -20,9 +20,7 @@ import (
 	reportingv1 "server-management-service/gen/go/reporting/v1"
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
 	"server-management-service/internal/infrastructure/gateway"
-	"server-management-service/internal/infrastructure/security"
 	"server-management-service/internal/shared/logger"
-	"server-management-service/internal/shared/middlewares"
 )
 
 func (a *App) Run() error {
@@ -39,43 +37,18 @@ func (a *App) Run() error {
 	// Initialize Logger
 	logger.InitLogger()
 
-	authenticator := security.NewAuthenticator(a.Config.JWTSecret, a.RedisClient)
-	authorizer := security.NewAuthorizer()
-
-	publicMethods := map[string]bool{
-		"/grpc.health.v1.Health/Check": true,
-		"/portal.auth.v1.AuthService/Login": true,
-		"/portal.auth.v1.AuthService/RefreshToken": true,
-	}
-
-	methodRoles := map[string]string{
-		"/server_management.v1.ServerManagementService/CreateServer":  "ADMIN",
-		"/server_management.v1.ServerManagementService/UpdateServer":  "ADMIN",
-		"/server_management.v1.ServerManagementService/DeleteServer":  "ADMIN",
-		"/server_management.v1.ServerManagementService/ImportServers": "ADMIN",
-		"/server_management.v1.ServerManagementService/ExportServers": "ADMIN",
-		"/server_management.v1.ServerManagementService/ViewServers":   "", // allow any logged-in user
-		"/reporting.v1.ReportingService/RequestReport":                "ADMIN",
-	}
-
-	a.GRPCServer = grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			middlewares.AuthenticationInterceptor(authenticator, publicMethods),
-			middlewares.PermissionInterceptor(authorizer, methodRoles),
-		),
-	)
-	
-	if a.ServerHandler != nil {
-		server_managementv1.RegisterServerManagementServiceServer(a.GRPCServer, a.ServerHandler)
-	}
-	
-	if a.ReportingHandler != nil {
-		reportingv1.RegisterReportingServiceServer(a.GRPCServer, a.ReportingHandler)
-	}
-
-	if a.AuthHandler != nil {
-		authv1.RegisterAuthServiceServer(a.GRPCServer, a.AuthHandler)
-	}
+	a.GRPCServer = NewGRPCServer(GRPCServerDeps{
+		Validator:           a.Validator,
+		Authenticator:       a.Authenticator,
+		Authorizer:          a.Authorizer,
+		CSRFManager:         a.CSRFManager,
+		Auth:                a.AuthHandler,
+		Reporting:           a.ReportingHandler,
+		ServerManagement:    a.ServerHandler,
+		RateLimiter:         a.RateLimiter,
+		RateLimitKeyBuilder: a.RateLimitKeyBuilder,
+		RateLimitConfig:     a.RateLimitConfig,
+	})
 
 	if a.ReportingWorker != nil {
 		a.ReportingWorker.Start(ctx)
