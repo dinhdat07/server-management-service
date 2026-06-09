@@ -1,26 +1,53 @@
 package security
 
-import (
-	"context"
-)
+import "context"
 
 type Authorizer struct {
+	rolePermissions map[string]map[PermissionCode]bool
 }
 
 func NewAuthorizer() *Authorizer {
-	return &Authorizer{}
-}
-
-func (a *Authorizer) HasRole(ctx context.Context, principal *Principal, requiredRole string) bool {
-	// If no specific role is required, allow access
-	if requiredRole == "" {
-		return true
+	// Static RBAC mapping
+	adminPerms := map[PermissionCode]bool{
+		PermServerCreate:  true,
+		PermServerRead:    true,
+		PermServerUpdate:  true,
+		PermServerDelete:  true,
+		PermServerImport:  true,
+		PermServerExport:  true,
+		PermReportRequest: true,
 	}
 
-	// Admin has access to everything
+	userPerms := map[PermissionCode]bool{
+		PermServerRead: true, // Only allow viewing servers
+	}
+
+	return &Authorizer{
+		rolePermissions: map[string]map[PermissionCode]bool{
+			"ADMIN": adminPerms,
+			"USER":  userPerms,
+		},
+	}
+}
+
+func (a *Authorizer) HasPermission(ctx context.Context, principal *Principal, requiredPermission PermissionCode) bool {
+	if requiredPermission == "" {
+		return true // Allow if no specific permission is required
+	}
+
+	if principal == nil {
+		return false
+	}
+
+	// Always grant if ADMIN
 	if principal.RoleCode == "ADMIN" {
 		return true
 	}
 
-	return principal.RoleCode == requiredRole
+	perms, ok := a.rolePermissions[principal.RoleCode]
+	if !ok {
+		return false
+	}
+
+	return perms[requiredPermission]
 }
