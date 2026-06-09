@@ -77,6 +77,14 @@ func (a *App) Run() error {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
+
+	// Serve OpenAPI JSON files
+	mux.Handle("/openapi/", http.StripPrefix("/openapi/", http.FileServer(http.Dir("./api/openapi"))))
+
+	// Serve Swagger UI
+	mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./docs/swagger-ui.html")
+	})
 	
 	// Mount the gRPC gateway to the root of the HTTP server with middleware
 	mux.Handle("/", gateway.CookieMiddleware(gwmux))
