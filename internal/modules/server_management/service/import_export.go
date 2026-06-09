@@ -5,9 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net"
 	"strings"
 	"time"
 
+	"server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
 
@@ -107,10 +110,19 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 				return fmt.Errorf("batch create failed: %w", err)
 			}
 
-			// Dual-Write to Redis
+			// Dual-Write to Redis using Pipeline
 			if s.cache != nil {
+				var cacheItems []redis.CacheUpsertItem
 				for _, srv := range validServers {
-					_ = s.cache.Upsert(ctx, srv.ServerID, srv.IPv4, string(srv.CurrentStatus), 0)
+					cacheItems = append(cacheItems, redis.CacheUpsertItem{
+						ID:         srv.ServerID,
+						IPv4:       srv.IPv4,
+						Status:     string(srv.CurrentStatus),
+						RetryCount: 0,
+					})
+				}
+				if err := s.cache.BatchUpsert(ctx, cacheItems); err != nil {
+					log.Printf("[WARNING] DB Import succeeded but Redis sync failed: %v", err)
 				}
 			}
 		}
@@ -135,7 +147,8 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 		}
 
 		// simple validation before adding to batch
-		if name == "" || ipv4 == "" || len(name) > 255 {
+		ip := net.ParseIP(ipv4)
+		if name == "" || ipv4 == "" || len(name) > 255 || ip == nil || ip.To4() == nil {
 			result.FailCount++
 			result.FailedServers = append(result.FailedServers, fmt.Sprintf("%s (%s) - Invalid Format", name, ipv4))
 			continue

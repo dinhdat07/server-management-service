@@ -130,7 +130,9 @@ func (s *AuthServer) LogoutAll(ctx context.Context, req *authv1.LogoutAllRequest
 	principal, ok := grpcctx.GetPrincipal(ctx)
 	if ok && principal != nil && principal.UserID != "" {
 		var userID uint
-		fmt.Sscanf(principal.UserID, "%d", &userID)
+		if _, err := fmt.Sscanf(principal.UserID, "%d", &userID); err != nil {
+			return nil, fmt.Errorf("invalid user id format in token: %w", err)
+		}
 		if userID > 0 {
 			_ = s.authService.LogoutAll(ctx, userID)
 		}
