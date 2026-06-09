@@ -1,8 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
+	"html/template"
 	"log"
 	"sync"
 
@@ -13,6 +16,18 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/count"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 )
+
+//go:embed templates/status_report.html
+var statusReportTemplate string
+
+type TemplateData struct {
+	StartDate      string
+	EndDate        string
+	TotalServers   int64
+	OnlineServers  int64
+	OfflineServers int64
+	UptimePercent  float64
+}
 
 type ReportingWorker interface {
 	Start(ctx context.Context)
@@ -121,23 +136,32 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 		return err
 	}
 
-	// 3. Render and Send HTML (Mocked for now)
-	html := fmt.Sprintf(`
-		<h1>Server Daily Report</h1>
-		<p>Date Range: %s to %s</p>
-		<ul>
-			<li>Total Servers: %d</li>
-			<li>Online Servers: %d</li>
-			<li>Offline Servers: %d</li>
-			<li>Average Uptime: %.2f%%</li>
-		</ul>
-	`, req.StartTime.Format("2006-01-02"), req.EndTime.Format("2006-01-02"), totalServers, onlineServers, offlineServers, uptimePercent)
+	// 3. Render and Send HTML Email using template
+	tmpl, err := template.New("status_report").Parse(statusReportTemplate)
+	if err != nil {
+		return fmt.Errorf("failed to parse email template: %w", err)
+	}
 
-	log.Printf("[ReportingWorker] Sending email to %s:\n%s", req.RequestorEmail, html)
+	data := TemplateData{
+		StartDate:      req.StartTime.Format("2006-01-02"),
+		EndDate:        req.EndTime.Format("2006-01-02"),
+		TotalServers:   totalServers,
+		OnlineServers:  onlineServers,
+		OfflineServers: offlineServers,
+		UptimePercent:  uptimePercent,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute email template: %w", err)
+	}
+	htmlStr := buf.String()
+
+	log.Printf("[ReportingWorker] Sending email to %s", req.RequestorEmail)
 	
 	// Call internal Notification Service
 	if w.notifier != nil {
-		err := w.notifier.SendReportEmail(ctx, req.RequestorEmail, "Daily Server Status Report", html)
+		err := w.notifier.SendReportEmail(ctx, req.RequestorEmail, "Server Status Report", htmlStr)
 		if err != nil {
 			log.Printf("[ReportingWorker] Error sending email: %v", err)
 			return fmt.Errorf("failed to send email: %w", err)
