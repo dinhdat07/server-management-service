@@ -6,6 +6,11 @@ meta {
 
 post {
   url: {{baseURL}}/api/v1/auth/logout
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 assert {

@@ -9,6 +9,10 @@ post {
   body: json
 }
 
+auth:bearer {
+  token: {{accessToken}}
+}
+
 body:json {
   {
     "server_name": "should-fail-{{$randomInt}}",

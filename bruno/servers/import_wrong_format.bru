@@ -9,6 +9,10 @@ post {
   body: multipartForm
 }
 
+auth:bearer {
+  token: {{accessToken}}
+}
+
 body:multipart-form {
   file: @file(testdata/not_excel.csv)
 }

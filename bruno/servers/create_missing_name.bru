@@ -9,6 +9,10 @@ post {
   body: json
 }
 
+auth:bearer {
+  token: {{accessToken}}
+}
+
 body:json {
   {
     "ipv4": "10.0.0.50"
