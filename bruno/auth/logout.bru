@@ -10,7 +10,7 @@ post {
 
 assert {
   res.status: eq 200
-  res.body.message: exists
+  res.body.message: isString
 }
 
 script:post-response {
