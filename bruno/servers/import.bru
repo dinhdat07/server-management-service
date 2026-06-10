@@ -5,8 +5,13 @@ meta {
 }
 
 post {
+  auth: bearer
   url: {{baseURL}}/api/v1/servers/import
   body: multipartForm
+
+auth:bearer {
+  token: {{accessToken}}
+}
 }
 
 body:multipart-form {

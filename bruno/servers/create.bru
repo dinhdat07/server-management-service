@@ -5,8 +5,13 @@ meta {
 }
 
 post {
+  auth: bearer
   url: {{baseURL}}/api/v1/servers
   body: json
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 body:json {

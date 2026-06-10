@@ -5,7 +5,12 @@ meta {
 }
 
 delete {
+  auth: bearer
   url: {{baseURL}}/api/v1/servers/{{createdServerId}}
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 assert {

@@ -5,7 +5,12 @@ meta {
 }
 
 get {
+  auth: bearer
   url: {{baseURL}}/api/v1/servers/export?page=1&limit=100
+}
+
+auth:bearer {
+  token: {{accessToken}}
 }
 
 assert {

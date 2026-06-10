@@ -9,6 +9,10 @@ post {
   body: json
 }
 
+auth:bearer {
+  token: {{accessToken}}
+}
+
 body:json {
   {
     "startDate": "2026-06-01",
