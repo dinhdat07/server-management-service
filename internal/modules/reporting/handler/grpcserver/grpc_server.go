@@ -2,11 +2,13 @@ package grpcserver
 
 import (
 	"context"
+	"errors"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	reportingv1 "server-management-service/gen/go/reporting/v1"
+	"server-management-service/internal/modules/reporting/domain"
 	"server-management-service/internal/modules/reporting/service"
 )
 
@@ -28,6 +30,9 @@ func (h *ReportingGrpcHandler) RequestReport(ctx context.Context, req *reporting
 
 	err := h.service.RequestReport(ctx, req.TargetEmail, req.StartDate, req.EndDate)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidEmail) {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 		return nil, status.Errorf(codes.Internal, "failed to request report: %v", err)
 	}
 

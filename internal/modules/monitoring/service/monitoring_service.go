@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 
 	"server-management-service/internal/infrastructure/elasticsearch"
@@ -38,7 +39,7 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 	err := s.esLogger.LogObservation(ctx, serverID, pingSuccess)
 	if err != nil {
 		// Log the error but don't fail the rest of the evaluation
-		fmt.Printf("failed to log observation to ES for server %s: %v\n", serverID, err)
+		log.Printf("[WARNING] failed to log observation to ES for server %s: %v", serverID, err)
 	}
 
 	redisKey := fmt.Sprintf("server:info:%s", serverID)
