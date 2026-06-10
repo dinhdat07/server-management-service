@@ -65,8 +65,6 @@ func NewAuthService(
 	}
 }
 
-
-
 func (s *authServiceImpl) Login(ctx context.Context, email, password, ipAddress, userAgent string) (*LoginResult, error) {
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
@@ -82,7 +80,7 @@ func (s *authServiceImpl) Login(ctx context.Context, email, password, ipAddress,
 
 	now := time.Now()
 	refreshExpiresAt := now.Add(7 * 24 * time.Hour) // 7 days
-	
+
 	// Generate new raw refresh token
 	rawRefreshToken := s.tokenMgr.GenerateRefreshToken()
 	hashedToken := s.tokenMgr.HashToken(rawRefreshToken)
@@ -158,7 +156,7 @@ func (s *authServiceImpl) Refresh(ctx context.Context, refreshToken string) (*Re
 	// Generate new tokens
 	rawRefreshToken := s.tokenMgr.GenerateRefreshToken()
 	newHash := s.tokenMgr.HashToken(rawRefreshToken)
-	
+
 	now := time.Now()
 	newRefreshExpiresAt := now.Add(7 * 24 * time.Hour)
 	if newRefreshExpiresAt.After(session.ExpiresAt) {

@@ -5,9 +5,11 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
+
+	"server-management-service/internal/modules/notification/domain"
 
 	"github.com/stretchr/testify/assert"
-	"server-management-service/internal/modules/notification/domain"
 )
 
 func startDummySMTPServer(t *testing.T) string {
@@ -63,6 +65,26 @@ func TestSMTPClient_Ping(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = Ping(context.Background(), host, "99999") // invalid port
+	assert.Error(t, err)
+}
+
+func TestPing_Success(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Skip("Failed to start dummy tcp server")
+	}
+	defer ln.Close()
+
+	host, port, _ := net.SplitHostPort(ln.Addr().String())
+
+	err = Ping(context.Background(), host, port)
+	assert.NoError(t, err)
+}
+
+func TestPing_Error(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	err := Ping(ctx, "127.0.0.255", "1") // unreachable IP
 	assert.Error(t, err)
 }
 

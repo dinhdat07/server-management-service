@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -196,6 +197,64 @@ func TestAuthService_Login(t *testing.T) {
 		_, err := svc.Login(context.Background(), "test@test.com", "password", "127.0.0.1", "agent")
 		assert.ErrorIs(t, err, ErrInvalidCredentials)
 	})
+
+	t.Run("find by email error", func(t *testing.T) {
+		uRepo := new(mockUserRepo)
+		svc := NewAuthService(uRepo, nil, nil, nil, nil)
+		uRepo.On("FindByEmail", mock.Anything, "test@test.com").Return(nil, errors.New("db error")).Once()
+		_, err := svc.Login(context.Background(), "test@test.com", "password", "127.0.0.1", "agent")
+		assert.ErrorContains(t, err, "failed to find user")
+	})
+
+	t.Run("create session error", func(t *testing.T) {
+		uRepo := new(mockUserRepo)
+		sRepo := new(mockSessionRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(uRepo, sRepo, nil, nil, tm)
+
+		uRepo.On("FindByEmail", mock.Anything, "test@test.com").Return(user, nil).Once()
+		tm.On("GenerateRefreshToken").Return("raw").Once()
+		tm.On("HashToken", "raw").Return("hashed").Once()
+		sRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.AuthSession")).Return(errors.New("db error")).Once()
+
+		_, err := svc.Login(context.Background(), "test@test.com", "password", "127.0.0.1", "agent")
+		assert.ErrorContains(t, err, "failed to create session")
+	})
+
+	t.Run("create refresh token error", func(t *testing.T) {
+		uRepo := new(mockUserRepo)
+		sRepo := new(mockSessionRepo)
+		rRepo := new(mockRefreshRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(uRepo, sRepo, rRepo, nil, tm)
+
+		uRepo.On("FindByEmail", mock.Anything, "test@test.com").Return(user, nil).Once()
+		tm.On("GenerateRefreshToken").Return("raw").Once()
+		tm.On("HashToken", "raw").Return("hashed").Once()
+		sRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.AuthSession")).Return(nil).Once()
+		rRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.RefreshToken")).Return(errors.New("db error")).Once()
+
+		_, err := svc.Login(context.Background(), "test@test.com", "password", "127.0.0.1", "agent")
+		assert.ErrorContains(t, err, "failed to create refresh token")
+	})
+
+	t.Run("generate access token error", func(t *testing.T) {
+		uRepo := new(mockUserRepo)
+		sRepo := new(mockSessionRepo)
+		rRepo := new(mockRefreshRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(uRepo, sRepo, rRepo, nil, tm)
+
+		uRepo.On("FindByEmail", mock.Anything, "test@test.com").Return(user, nil).Once()
+		tm.On("GenerateRefreshToken").Return("raw").Once()
+		tm.On("HashToken", "raw").Return("hashed").Once()
+		sRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.AuthSession")).Return(nil).Once()
+		rRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.RefreshToken")).Return(nil).Once()
+		tm.On("GenerateAccessToken", mock.Anything, mock.Anything, mock.Anything).Return("", errors.New("err")).Once()
+
+		_, err := svc.Login(context.Background(), "test@test.com", "password", "127.0.0.1", "agent")
+		assert.ErrorContains(t, err, "failed to sign access token")
+	})
 }
 
 func TestAuthService_Refresh(t *testing.T) {
@@ -216,7 +275,7 @@ func TestAuthService_Refresh(t *testing.T) {
 		rRepo.On("FindByTokenHash", mock.Anything, "hash").Return(tokenModel, nil).Once()
 		sRepo.On("FindActiveByID", mock.Anything, sessionID).Return(session, nil).Once()
 		uRepo.On("FindByID", mock.Anything, uint(1)).Return(user, nil).Once()
-		
+
 		tm.On("GenerateRefreshToken").Return("new-raw").Once()
 		tm.On("HashToken", "new-raw").Return("new-hash").Once()
 		rRepo.On("RevokeByID", mock.Anything, tokenModel.ID).Return(nil).Once()
@@ -251,6 +310,90 @@ func TestAuthService_Refresh(t *testing.T) {
 		_, err := svc.Refresh(context.Background(), "token")
 		assert.ErrorIs(t, err, ErrInvalidRefreshToken)
 	})
+
+	t.Run("empty refresh token", func(t *testing.T) {
+		svc := NewAuthService(nil, nil, nil, nil, nil)
+		_, err := svc.Refresh(context.Background(), "")
+		assert.ErrorIs(t, err, ErrInvalidRefreshToken)
+	})
+
+	t.Run("find by token hash error", func(t *testing.T) {
+		rRepo := new(mockRefreshRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(nil, nil, rRepo, nil, tm)
+
+		tm.On("HashToken", "token").Return("hashed").Once()
+		rRepo.On("FindByTokenHash", mock.Anything, "hashed").Return(nil, errors.New("db err")).Once()
+
+		_, err := svc.Refresh(context.Background(), "token")
+		assert.ErrorIs(t, err, ErrInvalidRefreshToken)
+	})
+
+	t.Run("token expired", func(t *testing.T) {
+		rRepo := new(mockRefreshRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(nil, nil, rRepo, nil, tm)
+
+		tm.On("HashToken", "token").Return("hashed").Once()
+		rRepo.On("FindByTokenHash", mock.Anything, "hashed").Return(&domain.RefreshToken{ExpiresAt: time.Now().Add(-1 * time.Hour)}, nil).Once()
+
+		_, err := svc.Refresh(context.Background(), "token")
+		assert.ErrorIs(t, err, ErrInvalidRefreshToken)
+	})
+
+	t.Run("session error", func(t *testing.T) {
+		sRepo := new(mockSessionRepo)
+		rRepo := new(mockRefreshRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(nil, sRepo, rRepo, nil, tm)
+
+		tm.On("HashToken", "token").Return("hashed").Once()
+		rRepo.On("FindByTokenHash", mock.Anything, "hashed").Return(&domain.RefreshToken{ExpiresAt: time.Now().Add(1 * time.Hour)}, nil).Once()
+		sRepo.On("FindActiveByID", mock.Anything, mock.Anything).Return(nil, errors.New("err")).Once()
+
+		_, err := svc.Refresh(context.Background(), "token")
+		assert.ErrorIs(t, err, ErrInvalidRefreshToken)
+	})
+
+	t.Run("find user error", func(t *testing.T) {
+		uRepo := new(mockUserRepo)
+		sRepo := new(mockSessionRepo)
+		rRepo := new(mockRefreshRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(uRepo, sRepo, rRepo, nil, tm)
+
+		tm.On("HashToken", "token").Return("hashed").Once()
+		rRepo.On("FindByTokenHash", mock.Anything, "hashed").Return(&domain.RefreshToken{ExpiresAt: time.Now().Add(1 * time.Hour)}, nil).Once()
+		sRepo.On("FindActiveByID", mock.Anything, mock.Anything).Return(&domain.AuthSession{}, nil).Once()
+		uRepo.On("FindByID", mock.Anything, mock.Anything).Return(nil, errors.New("err")).Once()
+
+		_, err := svc.Refresh(context.Background(), "token")
+		assert.ErrorIs(t, err, ErrUserNotFound)
+	})
+
+	t.Run("generate access token error", func(t *testing.T) {
+		uRepo := new(mockUserRepo)
+		sRepo := new(mockSessionRepo)
+		rRepo := new(mockRefreshRepo)
+		tm := new(mockTokenMgr)
+		svc := NewAuthService(uRepo, sRepo, rRepo, nil, tm)
+
+		tm.On("HashToken", "token").Return("hashed").Once()
+		rRepo.On("FindByTokenHash", mock.Anything, "hashed").Return(&domain.RefreshToken{ExpiresAt: time.Now().Add(1 * time.Hour)}, nil).Once()
+		sRepo.On("FindActiveByID", mock.Anything, mock.Anything).Return(&domain.AuthSession{ExpiresAt: time.Now().Add(2 * time.Hour)}, nil).Once()
+		uRepo.On("FindByID", mock.Anything, mock.Anything).Return(user, nil).Once()
+		tm.On("GenerateRefreshToken").Return("raw").Once()
+		tm.On("HashToken", "raw").Return("hashed2").Once()
+
+		rRepo.On("RevokeByID", mock.Anything, mock.Anything).Return(nil).Once()
+		rRepo.On("Create", mock.Anything, mock.Anything).Return(nil).Once()
+		rRepo.On("MarkReplacement", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+
+		tm.On("GenerateAccessToken", mock.Anything, mock.Anything, mock.Anything).Return("", errors.New("err")).Once()
+
+		_, err := svc.Refresh(context.Background(), "token")
+		assert.ErrorContains(t, err, "failed to generate new access token")
+	})
 }
 
 func TestAuthService_Logout(t *testing.T) {
@@ -271,6 +414,22 @@ func TestAuthService_Logout(t *testing.T) {
 		rs.On("MarkRevoked", mock.Anything, sessionID, session.ExpiresAt).Return(nil).Once()
 
 		err := svc.Logout(context.Background(), sessionID.String())
+		assert.NoError(t, err)
+	})
+
+	t.Run("invalid session id", func(t *testing.T) {
+		svc := NewAuthService(nil, nil, nil, nil, nil)
+		err := svc.Logout(context.Background(), "invalid-uuid")
+		assert.ErrorIs(t, err, ErrInvalidRefreshToken)
+	})
+
+	t.Run("session not found", func(t *testing.T) {
+		sRepo := new(mockSessionRepo)
+		svc := NewAuthService(nil, sRepo, nil, nil, nil)
+
+		sRepo.On("FindActiveByID", mock.Anything, mock.Anything).Return(nil, errors.New("not found")).Once()
+
+		err := svc.Logout(context.Background(), uuid.New().String())
 		assert.NoError(t, err)
 	})
 }
@@ -294,5 +453,13 @@ func TestAuthService_LogoutAll(t *testing.T) {
 
 		err := svc.LogoutAll(context.Background(), 1)
 		assert.NoError(t, err)
+	})
+
+	t.Run("list error", func(t *testing.T) {
+		sRepo := new(mockSessionRepo)
+		svc := NewAuthService(nil, sRepo, nil, nil, nil)
+		sRepo.On("ListActiveByUserID", mock.Anything, uint(1)).Return(nil, errors.New("err")).Once()
+		err := svc.LogoutAll(context.Background(), 1)
+		assert.ErrorContains(t, err, "err")
 	})
 }
