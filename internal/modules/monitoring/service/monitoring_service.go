@@ -9,8 +9,6 @@ import (
 	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/monitoring/repository"
 	serverDomain "server-management-service/internal/modules/server_management/domain"
-
-	"github.com/redis/go-redis/v9"
 )
 
 type MonitoringService interface {
@@ -19,15 +17,15 @@ type MonitoringService interface {
 
 type monitoringServiceImpl struct {
 	repo             repository.MonitoringRepository
-	rdb              redis.UniversalClient
+	stateStore       repository.ServerStateStore
 	esLogger         elasticsearch.ObservationLogger
 	failureThreshold int
 }
 
-func NewMonitoringService(repo repository.MonitoringRepository, rdb redis.UniversalClient, esLogger elasticsearch.ObservationLogger, failureThreshold int) MonitoringService {
+func NewMonitoringService(repo repository.MonitoringRepository, stateStore repository.ServerStateStore, esLogger elasticsearch.ObservationLogger, failureThreshold int) MonitoringService {
 	return &monitoringServiceImpl{
 		repo:             repo,
-		rdb:              rdb,
+		stateStore:       stateStore,
 		esLogger:         esLogger,
 		failureThreshold: failureThreshold,
 	}
@@ -42,16 +40,14 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 		log.Printf("[WARNING] failed to log observation to ES for server %s: %v", serverID, err)
 	}
 
-	redisKey := fmt.Sprintf("server:info:%s", serverID)
-
-	// Fetch current status and retry count from Redis
-	vals, err := s.rdb.HGetAll(ctx, redisKey).Result()
+	// Fetch current status and retry count from state store (Redis)
+	vals, err := s.stateStore.GetServerState(ctx, serverID)
 	if err != nil {
-		return fmt.Errorf("failed to get server info from redis: %w", err)
+		return err
 	}
 
 	if len(vals) == 0 {
-		return fmt.Errorf("server info not found in redis for id: %s", serverID)
+		return repository.ErrServerStateNotFound
 	}
 
 	currentStatusStr := vals["status"]
@@ -96,12 +92,12 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 
 	// Update Redis cache
 	if statusChanged {
-		err = s.rdb.HSet(ctx, redisKey, "status", string(newStatus), "retry_count", retryCount).Err()
+		err = s.stateStore.SetServerState(ctx, serverID, string(newStatus), retryCount)
 	} else {
-		err = s.rdb.HSet(ctx, redisKey, "status", string(currentStatus), "retry_count", retryCount).Err()
+		err = s.stateStore.SetServerState(ctx, serverID, string(currentStatus), retryCount)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to update redis status: %w", err)
+		return err
 	}
 
 	// Update Postgres ONLY if state actually changes
@@ -120,3 +116,6 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 
 	return nil
 }
+
+
+
