@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 
+	"server-management-service/internal/shared/config"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -11,18 +13,31 @@ import (
 
 var Log *zap.Logger
 
-func InitLogger() {
+func InitLogger(cfg config.LoggerConfig) {
 	// Create logs directory if it doesn't exist
 	if err := os.MkdirAll("logs", 0755); err != nil {
 		log.Fatalf("failed to create logs directory: %v", err)
 	}
 
+	maxSize := cfg.LogMaxSize
+	if maxSize <= 0 {
+		maxSize = 10
+	}
+	maxBackups := cfg.LogMaxBackups
+	if maxBackups < 0 {
+		maxBackups = 3
+	}
+	maxAge := cfg.LogMaxAge
+	if maxAge <= 0 {
+		maxAge = 28
+	}
+
 	w := zapcore.AddSync(&lumberjack.Logger{
 		Filename:   "logs/app.log",
-		MaxSize:    10, // megabytes
-		MaxBackups: 3,
-		MaxAge:     28, // days
-		Compress:   true,
+		MaxSize:    maxSize,
+		MaxBackups: maxBackups,
+		MaxAge:     maxAge,
+		Compress:   cfg.LogCompress,
 	})
 
 	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())

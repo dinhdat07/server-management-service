@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 
-	"server-management-service/internal/modules/monitoring/worker"
+	"server-management-service/internal/app/monitoring"
 )
 
 func main() {
-	app, err := worker.NewApp()
+	app, err := monitoring.NewApp()
 	if err != nil {
 		log.Fatalf("init monitoring worker: %v", err)
 	}

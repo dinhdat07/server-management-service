@@ -4,9 +4,8 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"server-management-service/internal/app/scheduler"
 	"syscall"
-
-	"server-management-service/internal/modules/reporting/scheduler"
 )
 
 func main() {

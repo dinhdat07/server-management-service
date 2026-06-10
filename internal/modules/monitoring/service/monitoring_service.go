@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
 
 	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/monitoring/repository"
@@ -32,35 +31,26 @@ func NewMonitoringService(repo repository.MonitoringRepository, stateStore repos
 }
 
 func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, ip string, pingSuccess bool) error {
-	// 1. Log observation directly to Elasticsearch (Time-Series)
-	// We MUST log every single ping attempt to ES to calculate Uptime later
+	// Log observation directly to Elasticsearch (Time-Series)
 	err := s.esLogger.LogObservation(ctx, serverID, pingSuccess)
 	if err != nil {
-		// Log the error but don't fail the rest of the evaluation
+		// Log the error, not fail the rest of the evaluation
 		log.Printf("[WARNING] failed to log observation to ES for server %s: %v", serverID, err)
 	}
 
 	// Fetch current status and retry count from state store (Redis)
-	vals, err := s.stateStore.GetServerState(ctx, serverID)
+	state, err := s.stateStore.GetServerState(ctx, serverID)
 	if err != nil {
 		return err
 	}
 
-	if len(vals) == 0 {
-		return repository.ErrServerStateNotFound
-	}
-
-	currentStatusStr := vals["status"]
+	currentStatusStr := state.Status
 	if currentStatusStr == "" {
 		currentStatusStr = string(serverDomain.ServerStatusOnline) // Default
 	}
 	currentStatus := serverDomain.ServerStatus(currentStatusStr)
 
-	retryCountStr := vals["retry_count"]
-	retryCount := 0
-	if retryCountStr != "" {
-		retryCount, _ = strconv.Atoi(retryCountStr)
-	}
+	retryCount := state.RetryCount
 
 	// State Machine Evaluation
 	var newStatus serverDomain.ServerStatus
@@ -116,6 +106,3 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 
 	return nil
 }
-
-
-

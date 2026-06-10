@@ -6,8 +6,12 @@ import (
 )
 
 type LoggerConfig struct {
-	Level  string
-	Format string
+	Level         string
+	Format        string
+	LogMaxSize    int // megabytes
+	LogMaxBackups int
+	LogMaxAge     int // days
+	LogCompress   bool
 }
 
 type SMTPConfig struct {
@@ -34,18 +38,16 @@ type Config struct {
 	JWTSecret     string
 	JWTAccessTTL  int
 	RefreshTTL    int
-	Port          string
 	Env           string
 	AdminEmail    string
 	AdminPassword string
 	UserEmail     string
 	UserPassword  string
 	ApiBaseUrl    string
-	FrontEndUrl         string
-	TelegramBotUsername string
+	FrontEndUrl   string
 
-	Logger LoggerConfig
-	SMTP   SMTPConfig
+	Logger    LoggerConfig
+	SMTP      SMTPConfig
 	Reporting ReportingConfig
 }
 
@@ -77,10 +79,30 @@ func Load() (*Config, error) {
 	if err != nil {
 		workerCount = 5
 	}
-	
+
 	jobQueueSize, err := GetEnvInt("REPORTING_JOB_QUEUE_SIZE", 100)
 	if err != nil {
 		jobQueueSize = 100
+	}
+
+	logMaxSize, err := GetEnvInt("LOG_MAX_SIZE", 10)
+	if err != nil {
+		logMaxSize = 10
+	}
+
+	logMaxBackups, err := GetEnvInt("LOG_MAX_BACKUPS", 3)
+	if err != nil {
+		logMaxBackups = 3
+	}
+
+	logMaxAge, err := GetEnvInt("LOG_MAX_AGE", 28)
+	if err != nil {
+		logMaxAge = 28
+	}
+
+	logCompress, err := GetEnvBool("LOG_COMPRESS", true)
+	if err != nil {
+		logCompress = true
 	}
 
 	cfg := &Config{
@@ -90,18 +112,20 @@ func Load() (*Config, error) {
 		JWTSecret:     jwtSecret,
 		JWTAccessTTL:  accessTTL,
 		RefreshTTL:    refreshTTL,
-		Port:          GetEnvDefault("PORT", httpPort),
 		Env:           GetEnvDefault("ENV", "development"),
 		AdminEmail:    GetEnvDefault("ADMIN_EMAIL", ""),
 		AdminPassword: GetEnvDefault("ADMIN_PASSWORD", ""),
 		UserEmail:     GetEnvDefault("USER_EMAIL", ""),
 		UserPassword:  GetEnvDefault("USER_PASSWORD", ""),
-		ApiBaseUrl:          GetEnvDefault("API_BASE_URL", ""),
-		FrontEndUrl:         GetEnvDefault("FRONTEND_BASE_URL", ""),
-		TelegramBotUsername: GetEnvDefault("TELEGRAM_BOT_USERNAME", "YourBotUsername"),
+		ApiBaseUrl:    GetEnvDefault("API_BASE_URL", ""),
+		FrontEndUrl:   GetEnvDefault("FRONTEND_BASE_URL", ""),
 		Logger: LoggerConfig{
-			Level:  GetEnvDefault("LOG_LEVEL", "info"),
-			Format: GetEnvDefault("LOG_FORMAT", "text"),
+			Level:         GetEnvDefault("LOG_LEVEL", "info"),
+			Format:        GetEnvDefault("LOG_FORMAT", "text"),
+			LogMaxSize:    logMaxSize,
+			LogMaxBackups: logMaxBackups,
+			LogMaxAge:     logMaxAge,
+			LogCompress:   logCompress,
 		},
 		SMTP: SMTPConfig{
 			Host:     GetEnvDefault("SMTP_HOST", "localhost"),

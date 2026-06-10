@@ -4,8 +4,7 @@ import "os"
 
 type ElasticsearchConfig struct {
 	URL         string
-	ServerIndex    string
-	StatusLogIndex string
+	ServerIndex string
 }
 
 func LoadElasticsearchConfig() ElasticsearchConfig {
@@ -16,17 +15,11 @@ func LoadElasticsearchConfig() ElasticsearchConfig {
 
 	serverIndex := os.Getenv("ELASTICSEARCH_SERVER_INDEX")
 	if serverIndex == "" {
-		serverIndex = "sms_server_catalog"
-	}
-
-	statusLogIndex := os.Getenv("ELASTICSEARCH_STATUS_LOG_INDEX")
-	if statusLogIndex == "" {
-		statusLogIndex = "sms_status_logs"
+		serverIndex = "sms_observation_logs"
 	}
 
 	return ElasticsearchConfig{
-		URL:            url,
-		ServerIndex:    serverIndex,
-		StatusLogIndex: statusLogIndex,
+		URL:         url,
+		ServerIndex: serverIndex,
 	}
 }

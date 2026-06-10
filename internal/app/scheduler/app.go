@@ -8,11 +8,11 @@ import (
 
 	"github.com/robfig/cron/v3"
 
+	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/notification/infrastructure/smtp"
 	notificationsvc "server-management-service/internal/modules/notification/service"
 	"server-management-service/internal/modules/reporting/repository/impl"
 	"server-management-service/internal/modules/reporting/service"
-	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
 )
@@ -113,4 +113,3 @@ func (a *App) Stop() {
 	a.reportingWorker.Stop()
 	log.Println("Daily Scheduler stopped.")
 }
-
