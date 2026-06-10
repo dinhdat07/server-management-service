@@ -20,20 +20,28 @@ import (
 const maxFileSize = 2 * 1024 * 1024 // 2MB used to limit the size of the imported excel file
 const batchSize = 100               // 100 servers per batch
 
+var (
+	ErrFileTooLarge  = errors.New("file size exceeds 2MB limit")
+	ErrInvalidFormat = errors.New("invalid excel file format")
+	ErrNoSheets      = errors.New("no sheets found in the excel file")
+	ErrEmptyFile     = errors.New("empty excel file")
+	ErrMissingCols   = errors.New("missing required columns: 'Server Name' or 'IPv4'")
+)
+
 func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*ImportResult, error) {
 	if len(fileBytes) > maxFileSize {
-		return nil, errors.New("file size exceeds 2MB limit")
+		return nil, ErrFileTooLarge
 	}
 
 	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
 	if err != nil {
-		return nil, errors.New("invalid excel file format")
+		return nil, ErrInvalidFormat
 	}
 	defer f.Close()
 
 	sheetName := f.GetSheetName(0)
 	if sheetName == "" {
-		return nil, errors.New("no sheets found in the excel file")
+		return nil, ErrNoSheets
 	}
 
 	rows, err := f.Rows(sheetName)
@@ -43,7 +51,7 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 
 	// Read header
 	if !rows.Next() {
-		return nil, errors.New("empty excel file")
+		return nil, ErrEmptyFile
 	}
 	header, _ := rows.Columns()
 
@@ -59,7 +67,7 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 	}
 
 	if nameIdx == -1 || ipIdx == -1 {
-		return nil, errors.New("missing required columns: 'Server Name' or 'IPv4'")
+		return nil, ErrMissingCols
 	}
 
 	result := &ImportResult{}
