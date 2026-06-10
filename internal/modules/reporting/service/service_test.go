@@ -24,7 +24,7 @@ func (m *mockWorker) EnqueueReport(req *domain.ReportRequest) {
 
 func TestRequestReport_Success(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewReportingRepository(t)
+	repo := repomock.NewMockReportingRepository(t)
 	worker := new(mockWorker)
 
 	svc := NewReportingService(repo, worker)
@@ -38,7 +38,7 @@ func TestRequestReport_Success(t *testing.T) {
 
 func TestRequestReport_InvalidStartDate(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewReportingRepository(t)
+	repo := repomock.NewMockReportingRepository(t)
 	worker := new(mockWorker)
 
 	svc := NewReportingService(repo, worker)
@@ -48,7 +48,7 @@ func TestRequestReport_InvalidStartDate(t *testing.T) {
 
 func TestRequestReport_InvalidEndDate(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewReportingRepository(t)
+	repo := repomock.NewMockReportingRepository(t)
 	worker := new(mockWorker)
 
 	svc := NewReportingService(repo, worker)
@@ -58,7 +58,7 @@ func TestRequestReport_InvalidEndDate(t *testing.T) {
 
 func TestRequestReport_EmptyEmail(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewReportingRepository(t)
+	repo := repomock.NewMockReportingRepository(t)
 	worker := new(mockWorker)
 
 	svc := NewReportingService(repo, worker)
@@ -71,7 +71,7 @@ func TestRequestReport_EmptyEmail(t *testing.T) {
 
 func TestRequestReport_DBError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewReportingRepository(t)
+	repo := repomock.NewMockReportingRepository(t)
 	worker := new(mockWorker)
 
 	dbErr := errors.New("db error")
@@ -83,3 +83,4 @@ func TestRequestReport_DBError(t *testing.T) {
 	assert.ErrorIs(t, err, dbErr)
 	worker.AssertNotCalled(t, "EnqueueReport")
 }
+

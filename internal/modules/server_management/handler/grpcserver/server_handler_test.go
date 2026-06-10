@@ -263,13 +263,13 @@ func TestHandler_ImportServers_Errors(t *testing.T) {
 	h := NewServerManagementServer(svc)
 
 	svc.On("ImportServers", mock.Anything, []byte("size")).
-		Return(nil, errors.New("file size exceeds 2MB limit")).Once()
+		Return(nil, service.ErrFileTooLarge).Once()
 		
 	_, err := h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("size")})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 
 	svc.On("ImportServers", mock.Anything, []byte("format")).
-		Return(nil, errors.New("invalid excel file format")).Once()
+		Return(nil, service.ErrInvalidFormat).Once()
 		
 	_, err = h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("format")})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
@@ -307,4 +307,6 @@ func TestHandler_ExportServers_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
+
+
 

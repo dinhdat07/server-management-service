@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
 	repomock "server-management-service/internal/modules/server_management/repository/mock"
+	"server-management-service/internal/modules/server_management/service"
 	cachemock "server-management-service/internal/modules/server_management/service/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -17,24 +18,24 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-func newTestService(repo repository.ServerRepository, cache *cachemock.CacheManager) ServerService {
-	return NewServerService(repo, cache)
+func newTestService(repo repository.ServerRepository, cache *cachemock.CacheManager) service.ServerService {
+	return service.NewServerService(repo, cache)
 }
 
-func newTestSvcNoCache(repo repository.ServerRepository) ServerService {
-	return NewServerService(repo, nil)
+func newTestSvcNoCache(repo repository.ServerRepository) service.ServerService {
+	return service.NewServerService(repo, nil)
 }
 
 func TestCreateServer_Success(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	repo.On("GetByName", ctx, "test-server").Return(nil, nil).Once()
 	repo.On("GetByIPv4", ctx, "1.2.3.4").Return(nil, nil).Once()
 	repo.On("Create", ctx, mock.AnythingOfType("*domain.Server")).Return(nil).Once()
 
-	server, err := svc.CreateServer(ctx, CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
+	server, err := svc.CreateServer(ctx, service.CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "test-server", server.ServerName)
@@ -43,34 +44,34 @@ func TestCreateServer_Success(t *testing.T) {
 
 func TestCreateServer_NameExists(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	existing := &domain.Server{ServerID: "existing-id", ServerName: "test-server", IPv4: "5.6.7.8"}
 	repo.On("GetByName", ctx, "test-server").Return(existing, nil).Once()
 
-	_, err := svc.CreateServer(ctx, CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
+	_, err := svc.CreateServer(ctx, service.CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
 
-	assert.ErrorIs(t, err, ErrNameExists)
+	assert.ErrorIs(t, err, service.ErrNameExists)
 }
 
 func TestCreateServer_IPv4Exists(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	existing := &domain.Server{ServerID: "existing-id", ServerName: "other", IPv4: "1.2.3.4"}
 	repo.On("GetByName", ctx, "test-server").Return(nil, nil).Once()
 	repo.On("GetByIPv4", ctx, "1.2.3.4").Return(existing, nil).Once()
 
-	_, err := svc.CreateServer(ctx, CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
+	_, err := svc.CreateServer(ctx, service.CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
 
-	assert.ErrorIs(t, err, ErrIPv4Exists)
+	assert.ErrorIs(t, err, service.ErrIPv4Exists)
 }
 
 func TestCreateServer_DBError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	dbErr := errors.New("db connection lost")
@@ -78,14 +79,14 @@ func TestCreateServer_DBError(t *testing.T) {
 	repo.On("GetByIPv4", ctx, "1.2.3.4").Return(nil, nil).Once()
 	repo.On("Create", ctx, mock.AnythingOfType("*domain.Server")).Return(dbErr).Once()
 
-	_, err := svc.CreateServer(ctx, CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
+	_, err := svc.CreateServer(ctx, service.CreateServerInput{ServerName: "test-server", IPv4: "1.2.3.4"})
 
 	assert.ErrorIs(t, err, dbErr)
 }
 
 func TestUpdateServer_Success(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	existing := &domain.Server{ServerID: "id-1", ServerName: "old-name", IPv4: "1.1.1.1"}
@@ -94,7 +95,7 @@ func TestUpdateServer_Success(t *testing.T) {
 	repo.On("GetByIPv4", ctx, "2.2.2.2").Return(nil, nil).Once()
 	repo.On("Update", ctx, mock.AnythingOfType("*domain.Server")).Return(nil).Once()
 
-	server, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
+	server, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "new-name", server.ServerName)
@@ -103,19 +104,19 @@ func TestUpdateServer_Success(t *testing.T) {
 
 func TestUpdateServer_NotFound(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	repo.On("GetByID", ctx, "id-nonexistent").Return(nil, repository.ErrNotFound).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-nonexistent", UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
+	_, err := svc.UpdateServer(ctx, "id-nonexistent", service.UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
 
-	assert.ErrorIs(t, err, ErrServerNotFound)
+	assert.ErrorIs(t, err, service.ErrServerNotFound)
 }
 
 func TestUpdateServer_NameConflict(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	existing := &domain.Server{ServerID: "id-1", ServerName: "old-name", IPv4: "1.1.1.1"}
@@ -123,14 +124,14 @@ func TestUpdateServer_NameConflict(t *testing.T) {
 	repo.On("GetByID", ctx, "id-1").Return(existing, nil).Once()
 	repo.On("GetByName", ctx, "new-name").Return(conflict, nil).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
+	_, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
 
-	assert.ErrorIs(t, err, ErrNameExists)
+	assert.ErrorIs(t, err, service.ErrNameExists)
 }
 
 func TestUpdateServer_IPv4Conflict(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	existing := &domain.Server{ServerID: "id-1", ServerName: "old-name", IPv4: "1.1.1.1"}
@@ -139,14 +140,14 @@ func TestUpdateServer_IPv4Conflict(t *testing.T) {
 	repo.On("GetByName", ctx, "new-name").Return(nil, nil).Once()
 	repo.On("GetByIPv4", ctx, "2.2.2.2").Return(conflict, nil).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
+	_, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
 
-	assert.ErrorIs(t, err, ErrIPv4Exists)
+	assert.ErrorIs(t, err, service.ErrIPv4Exists)
 }
 
 func TestDeleteServer_Success(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	existing := &domain.Server{ServerID: "id-1", ServerName: "srv", IPv4: "1.1.1.1"}
@@ -159,18 +160,18 @@ func TestDeleteServer_Success(t *testing.T) {
 
 func TestDeleteServer_NotFound(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	repo.On("GetByID", ctx, "id-nonexistent").Return(nil, repository.ErrNotFound).Once()
 
 	err := svc.DeleteServer(ctx, "id-nonexistent")
-	assert.ErrorIs(t, err, ErrServerNotFound)
+	assert.ErrorIs(t, err, service.ErrServerNotFound)
 }
 
 func TestDeleteServer_DBError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	dbErr := errors.New("db crash")
@@ -184,7 +185,7 @@ func TestDeleteServer_DBError(t *testing.T) {
 
 func TestSearchServers_WithFilters(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	servers := []*domain.Server{
@@ -203,7 +204,7 @@ func TestSearchServers_WithFilters(t *testing.T) {
 
 func TestSearchServers_Empty(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 20}
@@ -218,7 +219,7 @@ func TestSearchServers_Empty(t *testing.T) {
 
 func TestSearchServers_DBError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	dbErr := errors.New("query failed")
@@ -233,7 +234,7 @@ func TestSearchServers_DBError(t *testing.T) {
 
 func TestImportServers_ValidFile(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -261,10 +262,10 @@ func TestImportServers_ValidFile(t *testing.T) {
 
 func TestImportServers_FileTooLarge(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
-	largeBytes := make([]byte, maxFileSize+1)
+	largeBytes := make([]byte, (10<<20)+1)
 	_, err := svc.ImportServers(ctx, largeBytes)
 
 	assert.Error(t, err)
@@ -273,7 +274,7 @@ func TestImportServers_FileTooLarge(t *testing.T) {
 
 func TestImportServers_InvalidFormat(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	_, err := svc.ImportServers(ctx, []byte("not an excel file"))
@@ -284,7 +285,7 @@ func TestImportServers_InvalidFormat(t *testing.T) {
 
 func TestImportServers_DuplicatesSkipped(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -311,7 +312,7 @@ func TestImportServers_DuplicatesSkipped(t *testing.T) {
 
 func TestImportServers_MissingColumns(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -329,7 +330,7 @@ func TestImportServers_MissingColumns(t *testing.T) {
 
 func TestImportServers_EmptyFile(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -344,7 +345,7 @@ func TestImportServers_EmptyFile(t *testing.T) {
 
 func TestImportServers_HeaderCaseInsensitive(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -368,7 +369,7 @@ func TestImportServers_HeaderCaseInsensitive(t *testing.T) {
 
 func TestImportServers_HeaderAltNames(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -392,7 +393,7 @@ func TestImportServers_HeaderAltNames(t *testing.T) {
 
 func TestImportServers_MixedResults(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -423,7 +424,7 @@ func TestImportServers_MixedResults(t *testing.T) {
 
 func TestExportServers_Success(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	servers := []*domain.Server{
@@ -442,7 +443,7 @@ func TestExportServers_Success(t *testing.T) {
 
 func TestExportServers_EmptyResults(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 100}
@@ -457,7 +458,7 @@ func TestExportServers_EmptyResults(t *testing.T) {
 
 func TestExportServers_DBError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	dbErr := errors.New("db connection lost")
@@ -475,21 +476,21 @@ func TestExportServers_DBError(t *testing.T) {
 // Case 1: CreateServer - GetByName DB error
 func TestCreateServer_GetByNameError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
 	dbErr := errors.New("db connection lost")
 	repo.On("GetByName", ctx, "test").Return(nil, dbErr).Once()
 
-	_, err := svc.CreateServer(ctx, CreateServerInput{ServerName: "test", IPv4: "1.2.3.4"})
+	_, err := svc.CreateServer(ctx, service.CreateServerInput{ServerName: "test", IPv4: "1.2.3.4"})
 	assert.ErrorIs(t, err, dbErr)
 }
 
 // Case 2: CreateServer - GetByIPv4 DB error
 func TestCreateServer_GetByIPv4Error(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -497,14 +498,14 @@ func TestCreateServer_GetByIPv4Error(t *testing.T) {
 	repo.On("GetByName", ctx, "test").Return(nil, nil).Once()
 	repo.On("GetByIPv4", ctx, "1.2.3.4").Return(nil, dbErr).Once()
 
-	_, err := svc.CreateServer(ctx, CreateServerInput{ServerName: "test", IPv4: "1.2.3.4"})
+	_, err := svc.CreateServer(ctx, service.CreateServerInput{ServerName: "test", IPv4: "1.2.3.4"})
 	assert.ErrorIs(t, err, dbErr)
 }
 
 // Case 3: UpdateServer - Same name, different IP (skip GetByName)
 func TestUpdateServer_SameNameDiffIP(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -517,7 +518,7 @@ func TestUpdateServer_SameNameDiffIP(t *testing.T) {
 	})).Return(nil).Once()
 	cache.On("Upsert", ctx, "id-1", "2.2.2.2", mock.Anything, mock.Anything).Return(nil).Once()
 
-	server, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "srv", IPv4: "2.2.2.2"})
+	server, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "srv", IPv4: "2.2.2.2"})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "srv", server.ServerName)
@@ -528,7 +529,7 @@ func TestUpdateServer_SameNameDiffIP(t *testing.T) {
 // Case 4: UpdateServer - Same IP, different name (skip GetByIPv4)
 func TestUpdateServer_SameIPDiffName(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -541,7 +542,7 @@ func TestUpdateServer_SameIPDiffName(t *testing.T) {
 	})).Return(nil).Once()
 	cache.On("Upsert", ctx, "id-1", "1.1.1.1", mock.Anything, mock.Anything).Return(nil).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "new-name", IPv4: "1.1.1.1"})
+	_, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "new-name", IPv4: "1.1.1.1"})
 
 	assert.NoError(t, err)
 	repo.AssertNotCalled(t, "GetByIPv4")
@@ -550,7 +551,7 @@ func TestUpdateServer_SameIPDiffName(t *testing.T) {
 // Case 5: UpdateServer - Identical values (skip all conflict checks)
 func TestUpdateServer_IdenticalValues(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -561,7 +562,7 @@ func TestUpdateServer_IdenticalValues(t *testing.T) {
 	})).Return(nil).Once()
 	cache.On("Upsert", ctx, "id-1", "1.1.1.1", mock.Anything, mock.Anything).Return(nil).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "srv", IPv4: "1.1.1.1"})
+	_, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "srv", IPv4: "1.1.1.1"})
 
 	assert.NoError(t, err)
 	repo.AssertNotCalled(t, "GetByName")
@@ -571,7 +572,7 @@ func TestUpdateServer_IdenticalValues(t *testing.T) {
 // Case 6: UpdateServer - GetByName returns error during conflict check
 func TestUpdateServer_GetByNameError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -580,14 +581,14 @@ func TestUpdateServer_GetByNameError(t *testing.T) {
 	repo.On("GetByID", ctx, "id-1").Return(existing, nil).Once()
 	repo.On("GetByName", ctx, "new-name").Return(nil, dbErr).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "new-name", IPv4: "1.1.1.1"})
+	_, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "new-name", IPv4: "1.1.1.1"})
 	assert.ErrorIs(t, err, dbErr)
 }
 
 // Case 7: UpdateServer - GetByIPv4 returns error during conflict check
 func TestUpdateServer_GetByIPv4Error(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -596,14 +597,14 @@ func TestUpdateServer_GetByIPv4Error(t *testing.T) {
 	repo.On("GetByID", ctx, "id-1").Return(existing, nil).Once()
 	repo.On("GetByIPv4", ctx, "2.2.2.2").Return(nil, dbErr).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "srv", IPv4: "2.2.2.2"})
+	_, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "srv", IPv4: "2.2.2.2"})
 	assert.ErrorIs(t, err, dbErr)
 }
 
 // Case 8: UpdateServer - repo.Update returns error
 func TestUpdateServer_UpdateError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -614,14 +615,14 @@ func TestUpdateServer_UpdateError(t *testing.T) {
 	repo.On("GetByIPv4", ctx, "2.2.2.2").Return(nil, nil).Once()
 	repo.On("Update", ctx, mock.Anything).Return(dbErr).Once()
 
-	_, err := svc.UpdateServer(ctx, "id-1", UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
+	_, err := svc.UpdateServer(ctx, "id-1", service.UpdateServerInput{ServerName: "new-name", IPv4: "2.2.2.2"})
 	assert.ErrorIs(t, err, dbErr)
 }
 
-// Case 9: DeleteServer - repo.Delete returns ErrNotFound (maps to ErrServerNotFound)
+// Case 9: DeleteServer - repo.Delete returns ErrNotFound (maps to service.ErrServerNotFound)
 func TestDeleteServer_DeleteReturnsNotFound(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -630,13 +631,13 @@ func TestDeleteServer_DeleteReturnsNotFound(t *testing.T) {
 	repo.On("Delete", ctx, "id-1").Return(repository.ErrNotFound).Once()
 
 	err := svc.DeleteServer(ctx, "id-1")
-	assert.ErrorIs(t, err, ErrServerNotFound)
+	assert.ErrorIs(t, err, service.ErrServerNotFound)
 }
 
 // Case 10: DeleteServer - repo.Delete returns generic error
 func TestDeleteServer_DeleteError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -652,7 +653,7 @@ func TestDeleteServer_DeleteError(t *testing.T) {
 // Case 11: SearchServers - Page=0 defaults to 1
 func TestSearchServers_PageZeroDefaultsToOne(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	// The service should normalize Page=0 to Page=1
@@ -668,7 +669,7 @@ func TestSearchServers_PageZeroDefaultsToOne(t *testing.T) {
 // Case 12: SearchServers - PageSize=0 defaults to 20
 func TestSearchServers_PageSizeZeroDefaults(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 0}
@@ -681,7 +682,7 @@ func TestSearchServers_PageSizeZeroDefaults(t *testing.T) {
 // Case 13: SearchServers - PageSize=101 clamped to 20
 func TestSearchServers_PageSizeExceedsMax(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 101}
@@ -694,7 +695,7 @@ func TestSearchServers_PageSizeExceedsMax(t *testing.T) {
 // Case 14: ImportServers - BatchCreate returns error
 func TestImportServers_BatchCreateError(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	svc := newTestSvcNoCache(repo)
 
 	f := excelize.NewFile()
@@ -719,7 +720,7 @@ func TestImportServers_BatchCreateError(t *testing.T) {
 
 func TestCreateServer_WithCache(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -728,7 +729,7 @@ func TestCreateServer_WithCache(t *testing.T) {
 	repo.On("Create", ctx, mock.Anything).Return(nil).Once()
 	cache.On("Upsert", ctx, mock.Anything, "1.2.3.4", "", 0).Return(nil).Once()
 
-	server, err := svc.CreateServer(ctx, CreateServerInput{ServerName: "test", IPv4: "1.2.3.4"})
+	server, err := svc.CreateServer(ctx, service.CreateServerInput{ServerName: "test", IPv4: "1.2.3.4"})
 
 	assert.NoError(t, err)
 	assert.Equal(t, "test", server.ServerName)
@@ -736,7 +737,7 @@ func TestCreateServer_WithCache(t *testing.T) {
 
 func TestDeleteServer_WithCache(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -751,7 +752,7 @@ func TestDeleteServer_WithCache(t *testing.T) {
 
 func TestImportServers_WithCache(t *testing.T) {
 	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
+	repo := repomock.NewMockServerRepository(t)
 	cache := cachemock.NewCacheManager(t)
 	svc := newTestService(repo, cache)
 
@@ -777,3 +778,5 @@ func TestImportServers_WithCache(t *testing.T) {
 }
 
 // --- Fixed: TestSearchServers_ConsistentData removed (duplicate of fixed WithFilters) ---
+
+
