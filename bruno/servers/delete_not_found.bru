@@ -1,0 +1,11 @@
+meta:
+  name: Delete Server - Not Found (404)
+  type: http
+  seq: 31
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/api/v1/servers/00000000-0000-0000-0000-000000000000"
+
+assert:
+  - res.status == 404

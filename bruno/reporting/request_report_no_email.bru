@@ -1,0 +1,18 @@
+meta:
+  name: Request Report - No Email (400)
+  type: http
+  seq: 39
+
+http:
+  method: POST
+  url: "{{baseURL}}/api/v1/servers/report"
+  body: json
+
+body:json:
+  {
+    "start_date": "2026-06-01",
+    "end_date": "2026-06-10"
+  }
+
+assert:
+  - res.status == 400

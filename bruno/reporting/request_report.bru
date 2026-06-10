@@ -1,0 +1,22 @@
+meta:
+  name: Request Uptime Report (Success)
+  type: http
+  seq: 38
+
+http:
+  method: POST
+  url: "{{baseURL}}/api/v1/servers/report"
+  body: json
+
+body:json:
+  {
+    "start_date": "2026-06-01",
+    "end_date": "2026-06-10",
+    "target_email": "{{testReportEmail}}"
+  }
+
+assert:
+  - res.status == 200
+  - res.body.status == "processing"
+  - res.body.code == 202
+  - res.body.message != undefined

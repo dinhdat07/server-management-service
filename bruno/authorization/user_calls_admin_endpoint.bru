@@ -1,0 +1,21 @@
+meta:
+  name: AuthZ - User → CreateServer (403)
+  type: http
+  seq: 45
+
+http:
+  method: POST
+  url: "{{baseURL}}/api/v1/servers"
+  body: json
+
+body:json:
+  {
+    "server_name": "should-fail-{{$randomInt}}",
+    "ipv4": "10.99.99.99"
+  }
+
+assert:
+  - res.status == 403
+
+script:pre-request:
+  req.setHeader("Authorization", "Bearer " + bru.getVar("userAccessToken"));

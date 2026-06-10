@@ -1,0 +1,12 @@
+meta:
+  name: View Servers - Limit=1
+  type: http
+  seq: 21
+
+http:
+  method: GET
+  url: "{{baseURL}}/api/v1/servers?page=1&limit=1"
+
+assert:
+  - res.status == 200
+  - res.body.servers.length <= 1

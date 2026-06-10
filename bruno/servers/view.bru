@@ -1,0 +1,17 @@
+meta:
+  name: View Servers (Default)
+  type: http
+  seq: 19
+
+http:
+  method: GET
+  url: "{{baseURL}}/api/v1/servers?page=1&limit=10"
+
+assert:
+  - res.status == 200
+  - res.body.total_count >= 0
+  - res.body.servers != undefined
+  - typeof res.body.servers == "array"
+
+script:post-response:
+  bru.setVar("totalServers", res.body.total_count);
