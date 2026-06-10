@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"server-management-service/internal/modules/reporting/domain"
+	domainmock "server-management-service/internal/modules/reporting/domain/mock"
 )
 
 type mockReportRepo struct {
@@ -40,19 +41,10 @@ func (m *mockNotifier) SendReportEmail(ctx context.Context, toEmail string, subj
 	return args.Error(0)
 }
 
-type mockUptimeCalculator struct {
-	mock.Mock
-}
-
-func (m *mockUptimeCalculator) CalculateUptime(ctx context.Context, startTime, endTime time.Time) (float64, error) {
-	args := m.Called(ctx, startTime, endTime)
-	return args.Get(0).(float64), args.Error(1)
-}
-
 func TestReportingWorker_StartStop(t *testing.T) {
 	repo := new(mockReportRepo)
 	notifier := new(mockNotifier)
-	uptimeCalc := new(mockUptimeCalculator)
+	uptimeCalc := new(domainmock.MockUptimeCalculator)
 	worker := NewReportingWorker(repo, uptimeCalc, 1, 10, notifier)
 
 	worker.Start(context.Background())
@@ -63,7 +55,7 @@ func TestReportingWorker_StartStop(t *testing.T) {
 func TestReportingWorker_ProcessReport_Success(t *testing.T) {
 	repo := new(mockReportRepo)
 	notifier := new(mockNotifier)
-	uptimeCalc := new(mockUptimeCalculator)
+	uptimeCalc := new(domainmock.MockUptimeCalculator)
 	worker := NewReportingWorker(repo, uptimeCalc, 1, 10, notifier).(*reportingWorkerImpl)
 
 	req := &domain.ReportRequest{
@@ -95,7 +87,7 @@ func TestReportingWorker_ProcessReport_Success(t *testing.T) {
 func TestReportingWorker_ProcessReport_DBError(t *testing.T) {
 	repo := new(mockReportRepo)
 	notifier := new(mockNotifier)
-	uptimeCalc := new(mockUptimeCalculator)
+	uptimeCalc := new(domainmock.MockUptimeCalculator)
 	worker := NewReportingWorker(repo, uptimeCalc, 1, 10, notifier).(*reportingWorkerImpl)
 
 	req := &domain.ReportRequest{
@@ -116,7 +108,7 @@ func TestReportingWorker_ProcessReport_DBError(t *testing.T) {
 func TestReportingWorker_ProcessReport_WorkError(t *testing.T) {
 	repo := new(mockReportRepo)
 	notifier := new(mockNotifier)
-	uptimeCalc := new(mockUptimeCalculator)
+	uptimeCalc := new(domainmock.MockUptimeCalculator)
 	worker := NewReportingWorker(repo, uptimeCalc, 1, 10, notifier).(*reportingWorkerImpl)
 
 	req := &domain.ReportRequest{
@@ -140,7 +132,7 @@ func TestReportingWorker_ProcessReport_WorkError(t *testing.T) {
 func TestReportingWorker_EnqueueAndProcess(t *testing.T) {
 	repo := new(mockReportRepo)
 	notifier := new(mockNotifier)
-	uptimeCalc := new(mockUptimeCalculator)
+	uptimeCalc := new(domainmock.MockUptimeCalculator)
 	worker := NewReportingWorker(repo, uptimeCalc, 1, 10, notifier)
 
 	req := &domain.ReportRequest{
