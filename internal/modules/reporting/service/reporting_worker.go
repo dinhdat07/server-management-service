@@ -11,10 +11,6 @@ import (
 
 	"server-management-service/internal/modules/reporting/domain"
 	"server-management-service/internal/modules/reporting/repository"
-	
-	esv8 "github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/core/count"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 )
 
 //go:embed templates/status_report.html
@@ -37,15 +33,14 @@ type ReportingWorker interface {
 
 type reportingWorkerImpl struct {
 	repo        repository.ReportingRepository
-	esClient    *esv8.TypedClient
-	esIndex     string
+	uptimeCalc  domain.UptimeCalculator
 	jobQueue    chan *domain.ReportRequest
 	workerCount int
 	notifier    domain.ReportNotifier
 	wg          sync.WaitGroup
 }
 
-func NewReportingWorker(repo repository.ReportingRepository, esClient *esv8.TypedClient, esIndex string, workerCount int, jobQueueSize int, notifier domain.ReportNotifier) ReportingWorker {
+func NewReportingWorker(repo repository.ReportingRepository, uptimeCalc domain.UptimeCalculator, workerCount int, jobQueueSize int, notifier domain.ReportNotifier) ReportingWorker {
 	if workerCount <= 0 {
 		workerCount = 5 // Default to 5 concurrent workers
 	}
@@ -54,8 +49,7 @@ func NewReportingWorker(repo repository.ReportingRepository, esClient *esv8.Type
 	}
 	return &reportingWorkerImpl{
 		repo:        repo,
-		esClient:    esClient,
-		esIndex:     esIndex,
+		uptimeCalc:  uptimeCalc,
 		jobQueue:    make(chan *domain.ReportRequest, jobQueueSize), // Buffered queue
 		workerCount: workerCount,
 		notifier:    notifier,
@@ -131,7 +125,7 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 	}
 
 	// 2. Get Uptime from Elasticsearch
-	uptimePercent, err := w.calculateUptime(ctx, req)
+	uptimePercent, err := w.uptimeCalc.CalculateUptime(ctx, req.StartTime, req.EndTime)
 	if err != nil {
 		return err
 	}
@@ -158,7 +152,7 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 	htmlStr := buf.String()
 
 	log.Printf("[ReportingWorker] Sending email to %s", req.RequestorEmail)
-	
+
 	// Call internal Notification Service
 	if w.notifier != nil {
 		err := w.notifier.SendReportEmail(ctx, req.RequestorEmail, "Server Status Report", htmlStr)
@@ -167,68 +161,6 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 			return fmt.Errorf("failed to send email: %w", err)
 		}
 	}
-	
+
 	return nil
-}
-
-func (w *reportingWorkerImpl) calculateUptime(ctx context.Context, req *domain.ReportRequest) (float64, error) {
-	if w.esClient == nil {
-		return 0, nil
-	}
-
-	startStr := req.StartTime.Format("2006-01-02T15:04:05Z")
-	endStr := req.EndTime.Format("2006-01-02T15:04:05Z")
-
-	// Total Observations
-	totalCountReq, err := w.esClient.Count().
-		Index(w.esIndex).
-		Request(&count.Request{
-			Query: &types.Query{
-				Range: map[string]types.RangeQuery{
-					"timestamp": types.DateRangeQuery{
-						Gte: &startStr,
-						Lte: &endStr,
-					},
-				},
-			},
-		}).Do(ctx)
-		
-	if err != nil {
-		return 0, fmt.Errorf("failed to count total observations: %w", err)
-	}
-
-	if totalCountReq.Count == 0 {
-		return 0, nil
-	}
-
-	// Success Observations
-	successCountReq, err := w.esClient.Count().
-		Index(w.esIndex).
-		Request(&count.Request{
-			Query: &types.Query{
-				Bool: &types.BoolQuery{
-					Must: []types.Query{
-						{
-							Range: map[string]types.RangeQuery{
-								"timestamp": types.DateRangeQuery{
-									Gte: &startStr,
-									Lte: &endStr,
-								},
-							},
-						},
-						{
-							Term: map[string]types.TermQuery{
-								"is_success": {Value: true},
-							},
-						},
-					},
-				},
-			},
-		}).Do(ctx)
-
-	if err != nil {
-		return 0, fmt.Errorf("failed to count success observations: %w", err)
-	}
-
-	return (float64(successCountReq.Count) / float64(totalCountReq.Count)) * 100, nil
 }

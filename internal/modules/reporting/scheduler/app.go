@@ -8,12 +8,13 @@ import (
 
 	"github.com/robfig/cron/v3"
 
-	"server-management-service/internal/modules/reporting/repository/impl"
-	"server-management-service/internal/modules/reporting/service"
-	"server-management-service/internal/shared/config"
-	"server-management-service/internal/shared/database"
 	"server-management-service/internal/modules/notification/infrastructure/smtp"
 	notificationsvc "server-management-service/internal/modules/notification/service"
+	"server-management-service/internal/modules/reporting/repository/impl"
+	"server-management-service/internal/modules/reporting/service"
+	"server-management-service/internal/infrastructure/elasticsearch"
+	"server-management-service/internal/shared/config"
+	"server-management-service/internal/shared/database"
 )
 
 type App struct {
@@ -55,7 +56,8 @@ func NewApp() (*App, error) {
 	smtpMailer := smtp.NewMailer(smtpConfig)
 	notificationService := notificationsvc.NewNotificationService(smtpMailer)
 
-	reportingWorker := service.NewReportingWorker(reportingRepo, esClient, esCfg.ServerIndex, cfg.Reporting.WorkerCount, cfg.Reporting.JobQueueSize, notificationService)
+	uptimeCalc := elasticsearch.NewESUptimeCalculator(esClient, esCfg.ServerIndex)
+	reportingWorker := service.NewReportingWorker(reportingRepo, uptimeCalc, cfg.Reporting.WorkerCount, cfg.Reporting.JobQueueSize, notificationService)
 	reportingService := service.NewReportingService(reportingRepo, reportingWorker)
 
 	adminEmail := config.GetEnvDefault("ADMIN_EMAIL", "admin@portal.local")
@@ -111,3 +113,4 @@ func (a *App) Stop() {
 	a.reportingWorker.Stop()
 	log.Println("Daily Scheduler stopped.")
 }
+

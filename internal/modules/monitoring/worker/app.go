@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/monitoring/repository/impl"
 	"server-management-service/internal/modules/monitoring/service"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
-	"server-management-service/internal/infrastructure/elasticsearch"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -60,8 +60,9 @@ func NewApp() (*App, error) {
 
 	// Initialize Dependencies
 	repo := impl.NewGormMonitoringRepository(db)
+	stateStore := impl.NewRedisServerStateStore(redisClient)
 	threshold, _ := config.GetEnvInt("MONITORING_FAILURE_THRESHOLD", 2)
-	monService := service.NewMonitoringService(repo, redisClient, esLogger, threshold)
+	monService := service.NewMonitoringService(repo, stateStore, esLogger, threshold)
 
 	// Unprivileged ping for non-root environments (Set to true if running as root on Linux)
 	privilegedStr := os.Getenv("ICMP_PRIVILEGED")
@@ -82,7 +83,7 @@ func NewApp() (*App, error) {
 
 func (a *App) Run() error {
 	tickInterval, _ := config.GetEnvDuration("MONITORING_WORKER_TICK_INTERVAL", 30*time.Second)
-	
+
 	// Context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -149,3 +150,5 @@ func (a *App) runCycle(ctx context.Context) {
 		log.Printf("[Scheduler] Cycle completed successfully (Duration: %s)\n", duration)
 	}
 }
+
+

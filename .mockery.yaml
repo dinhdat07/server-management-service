@@ -26,6 +26,12 @@ packages:
       dir: "{{.InterfaceDir}}/mock"
       filename: "mock_{{.InterfaceName | snakecase}}.go"
       outpkg: "mock"
+  server-management-service/internal/modules/monitoring/domain:
+    config:
+      all: true
+      dir: "{{.InterfaceDir}}/mock"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
+      outpkg: "mock"
   server-management-service/internal/modules/monitoring/repository:
     config:
       all: true
