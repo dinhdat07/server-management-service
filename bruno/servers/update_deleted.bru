@@ -7,11 +7,10 @@ meta {
 put {
   auth: bearer
   url: {{baseURL}}/api/v1/servers/{{deletedServerId}}
-  body: json
+  body: json}
 
 auth:bearer {
   token: {{accessToken}}
-}
 }
 
 body:json {

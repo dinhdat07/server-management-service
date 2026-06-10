@@ -10,6 +10,7 @@ import (
 	"server-management-service/internal/shared/grpcctx"
 
 	"server-management-service/internal/modules/identity/service"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -73,9 +74,10 @@ func (s *AuthServer) Login(ctx context.Context, req *authv1.LoginRequest) (*auth
 	}
 
 	return &authv1.LoginResponse{
-		AccessToken: result.AccessToken,
-		TokenType:   "Bearer",
-		ExpiresIn:   result.ExpiresIn,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    result.ExpiresIn,
 	}, nil
 }
 
@@ -120,9 +122,10 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authv1.RefreshReques
 	}
 
 	return &authv1.RefreshResponse{
-		AccessToken: result.AccessToken,
-		TokenType:   "Bearer",
-		ExpiresIn:   result.ExpiresIn,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    result.ExpiresIn,
 	}, nil
 }
 

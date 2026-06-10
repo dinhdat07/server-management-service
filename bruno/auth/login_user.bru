@@ -19,10 +19,12 @@ body:json {
 assert {
   res.status: eq 200
   res.body.accessToken: isString
+  res.body.refreshToken: isString
   res.body.tokenType: eq Bearer
+  res.body.expiresIn: isString
 }
 
 script:post-response {
   bru.setVar("userAccessToken", res.body.accessToken);
-  bru.setVar("userRefreshToken", res.body.refreshToken || "");
+  bru.setVar("userRefreshToken", res.body.refreshToken);
 }
