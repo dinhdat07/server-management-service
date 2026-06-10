@@ -1,17 +1,18 @@
-meta:
+meta {
   name: Import Servers - Empty File (400)
   type: http
   seq: 34
+}
 
-http:
-  method: POST
-  url: "{{baseURL}}/api/v1/servers/import"
+post {
+  url: {{baseURL}}/api/v1/servers/import
   body: multipartForm
+}
 
-body:multipartForm:
-  - name: file
-    type: file
-    value: @file(../testdata/servers_empty.xlsx)
+body:multipart-form {
+  file: @file(testdata/servers_empty.xlsx)
+}
 
-assert:
-  - res.status >= 400
+assert {
+  res.status: gte 400
+}

@@ -1,18 +1,21 @@
-meta:
+meta {
   name: Update Server - IP Conflict (409)
   type: http
   seq: 28
+}
 
-http:
-  method: PUT
-  url: "{{baseURL}}/api/v1/servers/{{createdServerId}}"
+put {
+  url: {{baseURL}}/api/v1/servers/{{createdServerId}}
   body: json
+}
 
-body:json:
+body:json {
   {
     "server_name": "{{createdServerName}}-v2",
     "ipv4": "{{testServerIPv4}}"
   }
+}
 
-assert:
-  - res.status == 409
+assert {
+  res.status: eq 409
+}

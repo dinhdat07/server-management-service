@@ -1,13 +1,15 @@
-meta:
+meta {
   name: Export Servers (Success)
   type: http
   seq: 37
+}
 
-http:
-  method: GET
-  url: "{{baseURL}}/api/v1/servers/export?page=1&limit=100"
+get {
+  url: {{baseURL}}/api/v1/servers/export?page=1&limit=100
+}
 
-assert:
-  - res.status == 200
-  - res.body.file_content != undefined
-  - res.body.filename != undefined
+assert {
+  res.status: eq 200
+  res.body.file_content: exists
+  res.body.filename: exists
+}

@@ -1,19 +1,22 @@
-meta:
+meta {
   name: Request Report - Invalid Date (400)
   type: http
   seq: 40
+}
 
-http:
-  method: POST
-  url: "{{baseURL}}/api/v1/servers/report"
+post {
+  url: {{baseURL}}/api/v1/servers/report
   body: json
+}
 
-body:json:
+body:json {
   {
     "start_date": "01-06-2026",
     "end_date": "10-06-2026",
     "target_email": "{{testReportEmail}}"
   }
+}
 
-assert:
-  - res.status == 400
+assert {
+  res.status: eq 400
+}

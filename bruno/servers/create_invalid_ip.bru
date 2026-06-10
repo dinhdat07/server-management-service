@@ -1,18 +1,21 @@
-meta:
+meta {
   name: Create Server - Invalid IPv4 (400)
   type: http
   seq: 14
+}
 
-http:
-  method: POST
-  url: "{{baseURL}}/api/v1/servers"
+post {
+  url: {{baseURL}}/api/v1/servers
   body: json
+}
 
-body:json:
+body:json {
   {
     "server_name": "bad-ip-server",
     "ipv4": "999.999.999.999"
   }
+}
 
-assert:
-  - res.status == 400
+assert {
+  res.status: eq 400
+}

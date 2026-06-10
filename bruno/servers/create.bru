@@ -1,25 +1,29 @@
-meta:
+meta {
   name: Create Server (Success)
   type: http
   seq: 11
+}
 
-http:
-  method: POST
-  url: "{{baseURL}}/api/v1/servers"
+post {
+  url: {{baseURL}}/api/v1/servers
   body: json
+}
 
-body:json:
+body:json {
   {
     "server_name": "{{testServerName}}-{{$randomInt}}",
     "ipv4": "{{testServerIPv4}}"
   }
+}
 
-assert:
-  - res.status == 200
-  - res.body.server.server_id != undefined
-  - res.body.server.ipv4 == "{{testServerIPv4}}"
-  - res.body.server.current_status == "ONLINE"
+assert {
+  res.status: eq 200
+  res.body.server.server_id: exists
+  res.body.server.ipv4: eq {{testServerIPv4}}
+  res.body.server.current_status: eq ONLINE
+}
 
-script:post-response:
+script:post-response {
   bru.setVar("createdServerId", res.body.server.server_id);
   bru.setVar("createdServerName", res.body.server.server_name);
+}

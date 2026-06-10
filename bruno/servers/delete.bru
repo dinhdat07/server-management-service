@@ -1,15 +1,18 @@
-meta:
+meta {
   name: Delete Server (Success)
   type: http
   seq: 30
+}
 
-http:
-  method: DELETE
-  url: "{{baseURL}}/api/v1/servers/{{createdServerId}}"
+delete {
+  url: {{baseURL}}/api/v1/servers/{{createdServerId}}
+}
 
-assert:
-  - res.status == 200
-  - res.body.success == true
+assert {
+  res.status: eq 200
+  res.body.success: eq true
+}
 
-script:post-response:
+script:post-response {
   bru.setVar("deletedServerId", bru.getVar("createdServerId"));
+}
