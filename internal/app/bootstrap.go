@@ -8,24 +8,26 @@ import (
 	"server-management-service/internal/modules/server_management/service"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
-	
+
 	infraRedis "server-management-service/internal/infrastructure/redis"
-	
+
+	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
 	reportingimpl "server-management-service/internal/modules/reporting/repository/impl"
 	reportingsvc "server-management-service/internal/modules/reporting/service"
-	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
-	
-	"buf.build/go/protovalidate"
+
 	"server-management-service/internal/infrastructure/ratelimit"
 
-	"server-management-service/internal/modules/notification/infrastructure/smtp"
-	notificationsvc "server-management-service/internal/modules/notification/service"
-	"server-management-service/internal/modules/identity/domain"
+	"buf.build/go/protovalidate"
+
 	"server-management-service/internal/infrastructure/security"
+	"server-management-service/internal/infrastructure/elasticsearch"
+	"server-management-service/internal/modules/identity/domain"
 	authgrpc "server-management-service/internal/modules/identity/handler/grpcserver"
 	authrepo "server-management-service/internal/modules/identity/repository/impl"
 	authsvc "server-management-service/internal/modules/identity/service"
-	
+	"server-management-service/internal/modules/notification/infrastructure/smtp"
+	notificationsvc "server-management-service/internal/modules/notification/service"
+
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -56,7 +58,7 @@ func New() (*App, error) {
 	if err != nil {
 		log.Printf("failed to load redis config: %v", err)
 	}
-	
+
 	redisClient := database.NewRedisClient(redisCfg)
 	if redisClient != nil {
 		if err := database.PingRedis(context.Background(), redisClient); err != nil {
@@ -111,7 +113,8 @@ func New() (*App, error) {
 	notificationService := notificationsvc.NewNotificationService(smtpMailer)
 
 	reportingRepo := reportingimpl.NewGormReportingRepository(db)
-	reportingWorker := reportingsvc.NewReportingWorker(reportingRepo, esClient, esCfg.ServerIndex, cfg.Reporting.WorkerCount, cfg.Reporting.JobQueueSize, notificationService)
+	uptimeCalc := elasticsearch.NewESUptimeCalculator(esClient, esCfg.ServerIndex)
+	reportingWorker := reportingsvc.NewReportingWorker(reportingRepo, uptimeCalc, cfg.Reporting.WorkerCount, cfg.Reporting.JobQueueSize, notificationService)
 	reportingService := reportingsvc.NewReportingService(reportingRepo, reportingWorker)
 	reportingHandler := reportinggrpc.NewReportingGrpcHandler(reportingService)
 
@@ -121,21 +124,21 @@ func New() (*App, error) {
 	refreshRepo := authrepo.NewRefreshTokenRepository(db)
 	revoStore := authrepo.NewSessionRevocationStore(redisClient)
 	tokenMgr := security.NewTokenManager(cfg.JWTSecret)
-	
+
 	authService := authsvc.NewAuthService(userRepo, sessionRepo, refreshRepo, revoStore, tokenMgr)
 	authHandler := authgrpc.NewAuthServer(authService)
 
 	return &App{
-		Config:           cfg,
-		DB:               db,
-		RedisClient:      redisClient,
-		ESClient:         esClient,
-		ServerHandler:    serverHandler,
-		ReportingHandler: reportingHandler,
-		ReportingWorker:  reportingWorker,
-		AuthHandler:      authHandler,
+		Config:              cfg,
+		DB:                  db,
+		RedisClient:         redisClient,
+		ESClient:            esClient,
+		ServerHandler:       serverHandler,
+		ReportingHandler:    reportingHandler,
+		ReportingWorker:     reportingWorker,
+		AuthHandler:         authHandler,
 		NotificationService: notificationService,
-		
+
 		Validator:           validator,
 		Authenticator:       security.NewAuthenticator(cfg.JWTSecret, redisClient),
 		Authorizer:          security.NewAuthorizer(),
@@ -169,3 +172,5 @@ func seedSingleUser(db *gorm.DB, email, password string, role domain.RoleCode) {
 		db.Create(&domain.User{Email: email, Password: string(hash), RoleCode: role})
 	}
 }
+
+
