@@ -21,5 +21,5 @@ assert {
   res.status: eq 200
   res.body.status: eq processing
   res.body.code: eq 202
-  res.body.message: exists
+  res.body.message: isString
 }

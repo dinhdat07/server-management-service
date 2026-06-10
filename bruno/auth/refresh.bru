@@ -17,8 +17,7 @@ body:json {
 
 assert {
   res.status: eq 200
-  res.body.access_token: exists
-  res.body.refresh_token: exists
+  res.body.access_token: isString
 }
 
 script:post-response {

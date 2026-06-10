@@ -18,7 +18,7 @@ body:json {
 
 assert {
   res.status: eq 200
-  res.body.server.server_id: exists
+  res.body.server.server_id: isString
   res.body.server.ipv4: eq {{testServerIPv4}}
   res.body.server.current_status: eq ONLINE
 }
