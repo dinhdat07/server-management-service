@@ -1,0 +1,11 @@
+meta:
+  name: View Servers - Filter ONLINE
+  type: http
+  seq: 22
+
+http:
+  method: GET
+  url: "{{baseURL}}/api/v1/servers?page=1&limit=10&filter_status=ONLINE"
+
+assert:
+  - res.status == 200

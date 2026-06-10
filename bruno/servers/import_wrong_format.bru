@@ -1,0 +1,17 @@
+meta:
+  name: Import Servers - CSV Not Excel (400)
+  type: http
+  seq: 35
+
+http:
+  method: POST
+  url: "{{baseURL}}/api/v1/servers/import"
+  body: multipartForm
+
+body:multipartForm:
+  - name: file
+    type: file
+    value: @file(../testdata/not_excel.csv)
+
+assert:
+  - res.status >= 400

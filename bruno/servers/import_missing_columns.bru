@@ -1,0 +1,17 @@
+meta:
+  name: Import Servers - Missing Columns (400)
+  type: http
+  seq: 36
+
+http:
+  method: POST
+  url: "{{baseURL}}/api/v1/servers/import"
+  body: multipartForm
+
+body:multipartForm:
+  - name: file
+    type: file
+    value: @file(../testdata/servers_no_header.xlsx)
+
+assert:
+  - res.status >= 400

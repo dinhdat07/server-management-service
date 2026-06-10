@@ -1,0 +1,17 @@
+meta:
+  name: Create Server - Missing Name (400)
+  type: http
+  seq: 15
+
+http:
+  method: POST
+  url: "{{baseURL}}/api/v1/servers"
+  body: json
+
+body:json:
+  {
+    "ipv4": "10.0.0.50"
+  }
+
+assert:
+  - res.status == 400

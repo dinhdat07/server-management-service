@@ -1,0 +1,11 @@
+meta:
+  name: Delete Server - Twice (404)
+  type: http
+  seq: 32
+
+http:
+  method: DELETE
+  url: "{{baseURL}}/api/v1/servers/{{deletedServerId}}"
+
+assert:
+  - res.status == 404

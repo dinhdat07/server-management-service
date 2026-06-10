@@ -1,0 +1,18 @@
+meta:
+  name: Create Server - Duplicate IPv4 (409)
+  type: http
+  seq: 13
+
+http:
+  method: POST
+  url: "{{baseURL}}/api/v1/servers"
+  body: json
+
+body:json:
+  {
+    "server_name": "unique-name-{{$randomInt}}",
+    "ipv4": "{{testServerIPv4}}"
+  }
+
+assert:
+  - res.status == 409

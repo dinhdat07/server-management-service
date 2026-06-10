@@ -1,0 +1,14 @@
+meta:
+  name: OpenAPI Spec
+  type: http
+  seq: 43
+
+http:
+  method: GET
+  url: "{{baseURL}}/openapi/server_management/v1/server.swagger.json"
+
+assert:
+  - res.status == 200
+  - res.body.swagger == "2.0"
+  - res.body.info.title != undefined
+  - res.body.paths != undefined
