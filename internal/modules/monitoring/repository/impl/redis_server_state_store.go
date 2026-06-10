@@ -3,6 +3,10 @@ package impl
 import (
 	"context"
 	"fmt"
+	"strconv"
+	
+	sharedRedis "server-management-service/internal/infrastructure/redis"
+	monitoringDomain "server-management-service/internal/modules/monitoring/domain"
 	"server-management-service/internal/modules/monitoring/repository"
 
 	"github.com/redis/go-redis/v9"
@@ -17,23 +21,27 @@ func NewRedisServerStateStore(rdb redis.UniversalClient) repository.ServerStateS
 	return &RedisServerStateStore{rdb: rdb}
 }
 
-func (s *RedisServerStateStore) GetServerState(ctx context.Context, serverID string) (map[string]string, error) {
-	redisKey := fmt.Sprintf("server:info:%s", serverID)
+func (s *RedisServerStateStore) GetServerState(ctx context.Context, serverID string) (*monitoringDomain.ServerState, error) {
+	redisKey := fmt.Sprintf(sharedRedis.ServerInfoKeyFmt, serverID)
 	vals, err := s.rdb.HGetAll(ctx, redisKey).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get server info from redis: %w", err)
 	}
-	return vals, nil
+	if len(vals) == 0 {
+		return nil, repository.ErrServerStateNotFound
+	}
+	retryCount, _ := strconv.Atoi(vals["retry_count"])
+	return &monitoringDomain.ServerState{
+		Status:     vals["status"],
+		RetryCount: retryCount,
+	}, nil
 }
 
 func (s *RedisServerStateStore) SetServerState(ctx context.Context, serverID string, status string, retryCount int) error {
-	redisKey := fmt.Sprintf("server:info:%s", serverID)
+	redisKey := fmt.Sprintf(sharedRedis.ServerInfoKeyFmt, serverID)
 	err := s.rdb.HSet(ctx, redisKey, "status", status, "retry_count", retryCount).Err()
 	if err != nil {
 		return fmt.Errorf("failed to update redis status: %w", err)
 	}
 	return nil
 }
-
-
-

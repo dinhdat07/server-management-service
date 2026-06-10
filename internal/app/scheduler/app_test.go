@@ -38,7 +38,7 @@ func (m *mockReportingWorker) EnqueueReport(req *domain.ReportRequest) {
 func TestApp_CronJob(t *testing.T) {
 	svc := new(mockReportingSvc)
 	worker := new(mockReportingWorker)
-	
+
 	app := &App{
 		cron:             cron.New(),
 		reportingService: svc,
@@ -63,7 +63,7 @@ func TestApp_CronJob(t *testing.T) {
 func TestApp_StartStop(t *testing.T) {
 	svc := new(mockReportingSvc)
 	worker := new(mockReportingWorker)
-	
+
 	app := &App{
 		cron:             cron.New(),
 		reportingService: svc,

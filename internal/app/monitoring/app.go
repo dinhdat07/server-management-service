@@ -1,4 +1,4 @@
-package worker
+package monitoring
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/monitoring/repository/impl"
 	"server-management-service/internal/modules/monitoring/service"
+	"server-management-service/internal/modules/monitoring/worker"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
 
@@ -20,7 +21,7 @@ import (
 
 type App struct {
 	RedisClient redis.UniversalClient
-	Pool        Pool
+	Pool        worker.Pool
 }
 
 func NewApp() (*App, error) {
@@ -67,13 +68,13 @@ func NewApp() (*App, error) {
 	// Unprivileged ping for non-root environments (Set to true if running as root on Linux)
 	privilegedStr := os.Getenv("ICMP_PRIVILEGED")
 	privileged, _ := strconv.ParseBool(privilegedStr)
-	pinger := NewICMPPinger(privileged)
+	pinger := worker.NewICMPPinger(privileged)
 
 	// Settings
 	concurrency, _ := config.GetEnvInt("MONITORING_WORKER_CONCURRENCY", 100)
 	pingTimeout, _ := config.GetEnvDuration("MONITORING_WORKER_PING_TIMEOUT", 3*time.Second)
 
-	pool := NewWorkerPool(redisClient, monService, pinger, concurrency, pingTimeout)
+	pool := worker.NewWorkerPool(redisClient, monService, pinger, concurrency, pingTimeout)
 
 	return &App{
 		RedisClient: redisClient,
@@ -150,5 +151,3 @@ func (a *App) runCycle(ctx context.Context) {
 		log.Printf("[Scheduler] Cycle completed successfully (Duration: %s)\n", duration)
 	}
 }
-
-

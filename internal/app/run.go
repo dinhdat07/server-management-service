@@ -15,7 +15,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	
+
 	authv1 "server-management-service/gen/go/auth/v1"
 	reportingv1 "server-management-service/gen/go/reporting/v1"
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
@@ -35,7 +35,7 @@ func (a *App) Run() error {
 	httpAddr := ":" + a.Config.HTTPPort
 
 	// Initialize Logger
-	logger.InitLogger()
+	logger.InitLogger(a.Config.Logger)
 
 	a.GRPCServer = NewGRPCServer(GRPCServerDeps{
 		Validator:           a.Validator,
@@ -85,7 +85,7 @@ func (a *App) Run() error {
 	mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./docs/swagger-ui.html")
 	})
-	
+
 	// Mount the gRPC gateway to the root of the HTTP server with middleware
 	mux.Handle("/", gateway.CookieMiddleware(gwmux))
 
