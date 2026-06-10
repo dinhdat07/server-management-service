@@ -1,18 +1,21 @@
-meta:
+meta {
   name: Update Server - Deleted (404)
   type: http
   seq: 29
+}
 
-http:
-  method: PUT
-  url: "{{baseURL}}/api/v1/servers/{{deletedServerId}}"
+put {
+  url: {{baseURL}}/api/v1/servers/{{deletedServerId}}
   body: json
+}
 
-body:json:
+body:json {
   {
     "server_name": "resurrect",
     "ipv4": "10.0.0.98"
   }
+}
 
-assert:
-  - res.status == 404
+assert {
+  res.status: eq 404
+}

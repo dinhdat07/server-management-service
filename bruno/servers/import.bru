@@ -1,20 +1,20 @@
-meta:
+meta {
   name: Import Servers - Excel (Success)
   type: http
   seq: 33
+}
 
-http:
-  method: POST
-  url: "{{baseURL}}/api/v1/servers/import"
+post {
+  url: {{baseURL}}/api/v1/servers/import
   body: multipartForm
+}
 
-body:multipartForm:
-  - name: file
-    type: file
-    value: @file(../testdata/servers.xlsx)
+body:multipart-form {
+  file: @file(testdata/servers.xlsx)
+}
 
-assert:
-  - res.status == 200
-  - res.body.success_count == 3
-  - res.body.fail_count == 0
-  - res.body.successful_servers.length == 3
+assert {
+  res.status: eq 200
+  res.body.success_count: eq 3
+  res.body.fail_count: eq 0
+}

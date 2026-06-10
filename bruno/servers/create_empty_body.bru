@@ -1,14 +1,18 @@
-meta:
+meta {
   name: Create Server - Empty Body (400)
   type: http
   seq: 18
+}
 
-http:
-  method: POST
-  url: "{{baseURL}}/api/v1/servers"
+post {
+  url: {{baseURL}}/api/v1/servers
   body: json
+}
 
-body:json: {}
+body:json {
+  {}
+}
 
-assert:
-  - res.status == 400
+assert {
+  res.status: eq 400
+}

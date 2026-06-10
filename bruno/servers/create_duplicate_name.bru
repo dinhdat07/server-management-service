@@ -1,18 +1,21 @@
-meta:
+meta {
   name: Create Server - Duplicate Name (409)
   type: http
   seq: 12
+}
 
-http:
-  method: POST
-  url: "{{baseURL}}/api/v1/servers"
+post {
+  url: {{baseURL}}/api/v1/servers
   body: json
+}
 
-body:json:
+body:json {
   {
     "server_name": "{{createdServerName}}",
     "ipv4": "192.168.200.1"
   }
+}
 
-assert:
-  - res.status == 409
+assert {
+  res.status: eq 409
+}

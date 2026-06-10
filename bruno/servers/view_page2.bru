@@ -1,11 +1,13 @@
-meta:
+meta {
   name: View Servers - Page 2
   type: http
   seq: 20
+}
 
-http:
-  method: GET
-  url: "{{baseURL}}/api/v1/servers?page=2&limit=5"
+get {
+  url: {{baseURL}}/api/v1/servers?page=2&limit=5
+}
 
-assert:
-  - res.status == 200
+assert {
+  res.status: eq 200
+}
