@@ -19,7 +19,7 @@ func NewSessionRevocationStore(client redis.UniversalClient) repository.SessionR
 }
 
 func (s *revocationStoreRedis) MarkRevoked(ctx context.Context, sessionID uuid.UUID, expiresAt time.Time) error {
-	ttl := time.Until(expiresAt)
+	ttl := time.Until(expiresAt).Round(time.Second)
 	if ttl <= 0 {
 		return nil // Already expired
 	}
