@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
 	repomock "server-management-service/internal/modules/server_management/repository/mock"
@@ -191,12 +192,12 @@ func TestSearchServers_WithFilters(t *testing.T) {
 		{ServerID: "id-2", ServerName: "srv-b", IPv4: "2.2.2.2", CurrentStatus: domain.ServerStatusOffline},
 	}
 	filter := repository.ServerListFilter{Page: 1, PageSize: 20, Status: "ONLINE", Name: "srv"}
-	repo.On("Search", ctx, filter).Return(servers, int64(1), nil).Once()
+	repo.On("Search", ctx, filter).Return(servers, int64(2), nil).Once()
 
 	results, total, err := svc.SearchServers(ctx, filter)
 
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), total)
+	assert.Equal(t, int64(2), total)
 	assert.Len(t, results, 2)
 }
 
@@ -765,7 +766,9 @@ func TestImportServers_WithCache(t *testing.T) {
 
 	repo.On("FindByNamesOrIPv4s", ctx, mock.Anything, mock.Anything).Return([]*domain.Server{}, nil).Once()
 	repo.On("BatchCreate", ctx, mock.Anything).Return(nil).Once()
-	cache.On("BatchUpsert", ctx, mock.Anything).Return(nil).Once()
+	cache.On("BatchUpsert", ctx, mock.MatchedBy(func(items []redis.CacheUpsertItem) bool {
+		return len(items) == 1 && items[0].IPv4 == "10.0.0.1"
+	})).Return(nil).Once()
 
 	result, err := svc.ImportServers(ctx, buf.Bytes())
 
@@ -773,22 +776,4 @@ func TestImportServers_WithCache(t *testing.T) {
 	assert.Equal(t, int32(1), result.SuccessCount)
 }
 
-// --- Fixed: Correct data in WithFilters test ---
-func TestSearchServers_ConsistentData(t *testing.T) {
-	ctx := context.Background()
-	repo := repomock.NewServerRepository(t)
-	svc := newTestSvcNoCache(repo)
-
-	servers := []*domain.Server{
-		{ServerID: "id-1", ServerName: "srv-a", IPv4: "1.1.1.1"},
-		{ServerID: "id-2", ServerName: "srv-b", IPv4: "2.2.2.2"},
-	}
-	filter := repository.ServerListFilter{Page: 1, PageSize: 20}
-	repo.On("Search", ctx, filter).Return(servers, int64(2), nil).Once()
-
-	results, total, err := svc.SearchServers(ctx, filter)
-
-	assert.NoError(t, err)
-	assert.Equal(t, int64(2), total)
-	assert.Len(t, results, 2)
-}
+// --- Fixed: TestSearchServers_ConsistentData removed (duplicate of fixed WithFilters) ---
