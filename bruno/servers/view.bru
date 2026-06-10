@@ -10,10 +10,10 @@ get {
 
 assert {
   res.status: eq 200
-  res.body.total_count: gte 0
+  res.body.totalCount: gte 0
   res.body.servers: isArray
 }
 
 script:post-response {
-  bru.setVar("totalServers", res.body.total_count);
+  bru.setVar("totalServers", res.body.totalCount);
 }

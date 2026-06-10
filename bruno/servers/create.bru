@@ -11,19 +11,19 @@ post {
 
 body:json {
   {
-    "server_name": "{{testServerName}}-{{$randomInt}}",
+    "serverName": "{{testServerName}}-{{$randomInt}}",
     "ipv4": "{{testServerIPv4}}"
   }
 }
 
 assert {
   res.status: eq 200
-  res.body.server.server_id: isString
+  res.body.server.serverId: isString
   res.body.server.ipv4: eq {{testServerIPv4}}
-  res.body.server.current_status: eq ONLINE
+  res.body.server.currentStatus: eq ONLINE
 }
 
 script:post-response {
-  bru.setVar("createdServerId", res.body.server.server_id);
-  bru.setVar("createdServerName", res.body.server.server_name);
+  bru.setVar("createdServerId", res.body.server.serverId);
+  bru.setVar("createdServerName", res.body.server.serverName);
 }
