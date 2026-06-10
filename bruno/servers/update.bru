@@ -11,13 +11,13 @@ put {
 
 body:json {
   {
-    "server_name": "{{createdServerName}}-updated",
+    "serverName": "{{createdServerName}}-updated",
     "ipv4": "{{testServerIPv4Alt}}"
   }
 }
 
 assert {
   res.status: eq 200
-  res.body.server.server_id: eq {{createdServerId}}
+  res.body.server.serverId: eq {{createdServerId}}
   res.body.server.ipv4: eq {{testServerIPv4Alt}}
 }

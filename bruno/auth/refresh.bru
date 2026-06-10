@@ -17,7 +17,7 @@ body:json {
 
 assert {
   res.status: eq 200
-  res.body.access_token: isString
+  res.body.accessToken: isString
 }
 
 script:post-response {

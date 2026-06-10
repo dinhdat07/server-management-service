@@ -18,11 +18,11 @@ body:json {
 
 assert {
   res.status: eq 200
-  res.body.access_token: isString
-  res.body.token_type: eq Bearer
+  res.body.accessToken: isString
+  res.body.tokenType: eq Bearer
 }
 
 script:post-response {
-  bru.setVar("userAccessToken", res.body.access_token);
-  bru.setVar("userRefreshToken", res.body.refresh_token || "");
+  bru.setVar("userAccessToken", res.body.accessToken);
+  bru.setVar("userRefreshToken", res.body.refreshToken || "");
 }
