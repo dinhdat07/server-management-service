@@ -61,7 +61,11 @@ func (m *mockSvc) ImportServers(ctx context.Context, fileBytes []byte) (*service
 
 func (m *mockSvc) ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error) {
 	args := m.Called(ctx, filter)
-	return args.Get(0).([]byte), args.String(1), args.Error(2)
+	var b []byte
+	if args.Get(0) != nil {
+		b = args.Get(0).([]byte)
+	}
+	return b, args.String(1), args.Error(2)
 }
 
 func TestHandler_CreateServer_Success(t *testing.T) {
@@ -214,3 +218,93 @@ func TestMapServerToPB_Full(t *testing.T) {
 	assert.Equal(t, now.Format(time.RFC3339), pb.CreatedAt)
 	assert.Equal(t, now.Format(time.RFC3339), pb.UpdatedAt)
 }
+
+func TestHandler_NilRequests(t *testing.T) {
+	svc := new(mockSvc)
+	h := NewServerManagementServer(svc)
+	ctx := context.Background()
+
+	_, err := h.CreateServer(ctx, nil)
+	assert.Error(t, err)
+	
+	_, err = h.UpdateServer(ctx, nil)
+	assert.Error(t, err)
+
+	_, err = h.DeleteServer(ctx, nil)
+	assert.Error(t, err)
+
+	_, err = h.ViewServers(ctx, nil)
+	assert.Error(t, err)
+
+	_, err = h.ImportServers(ctx, nil)
+	assert.Error(t, err)
+
+	_, err = h.ExportServers(ctx, nil)
+	assert.Error(t, err)
+}
+
+func TestHandler_ImportServers_Success(t *testing.T) {
+	svc := new(mockSvc)
+	h := NewServerManagementServer(svc)
+
+	svc.On("ImportServers", mock.Anything, []byte("data")).
+		Return(&service.ImportResult{SuccessCount: 1}, nil).Once()
+
+	resp, err := h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{
+		FileContent: []byte("data"),
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), resp.SuccessCount)
+}
+
+func TestHandler_ImportServers_Errors(t *testing.T) {
+	svc := new(mockSvc)
+	h := NewServerManagementServer(svc)
+
+	svc.On("ImportServers", mock.Anything, []byte("size")).
+		Return(nil, errors.New("file size exceeds 2MB limit")).Once()
+		
+	_, err := h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("size")})
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	svc.On("ImportServers", mock.Anything, []byte("format")).
+		Return(nil, errors.New("invalid excel file format")).Once()
+		
+	_, err = h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("format")})
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	svc.On("ImportServers", mock.Anything, []byte("other")).
+		Return(nil, errors.New("internal db error")).Once()
+		
+	_, err = h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("other")})
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestHandler_ExportServers_Success(t *testing.T) {
+	svc := new(mockSvc)
+	h := NewServerManagementServer(svc)
+
+	svc.On("ExportServers", mock.Anything, mock.Anything).
+		Return([]byte("excel_data"), "servers.xlsx", nil).Once()
+
+	resp, err := h.ExportServers(context.Background(), &server_managementv1.ExportServersRequest{})
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("excel_data"), resp.FileContent)
+	assert.Equal(t, "servers.xlsx", resp.Filename)
+}
+
+func TestHandler_ExportServers_Error(t *testing.T) {
+	svc := new(mockSvc)
+	h := NewServerManagementServer(svc)
+
+	svc.On("ExportServers", mock.Anything, mock.Anything).
+		Return(nil, "", errors.New("export failed")).Once()
+
+	_, err := h.ExportServers(context.Background(), &server_managementv1.ExportServersRequest{})
+
+	assert.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
