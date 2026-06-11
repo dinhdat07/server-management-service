@@ -10,13 +10,15 @@ import (
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 
-	"server-management-service/internal/modules/server_management/handler/grpcserver"
-	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
-	reportingsvc "server-management-service/internal/modules/reporting/service"
+	"server-management-service/internal/infrastructure/ratelimit"
+	"server-management-service/internal/infrastructure/security"
 	authgrpc "server-management-service/internal/modules/identity/handler/grpcserver"
 	notificationsvc "server-management-service/internal/modules/notification/service"
-	"server-management-service/internal/infrastructure/security"
-	"server-management-service/internal/infrastructure/ratelimit"
+	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
+	reportingsvc "server-management-service/internal/modules/reporting/service"
+	"server-management-service/internal/modules/server_management/handler/grpcserver"
+	resthandler "server-management-service/internal/modules/server_management/handler/rest"
+
 	"buf.build/go/protovalidate"
 )
 
@@ -27,13 +29,14 @@ type App struct {
 	GRPCServer *grpc.Server
 	HTTPServer *http.Server
 
-	RedisClient   redis.UniversalClient
-	ESClient      *elasticsearch.TypedClient
-	ServerHandler    *grpcserver.ServerManagementServer
-	ReportingHandler *reportinggrpc.ReportingGrpcHandler
-	ReportingWorker  reportingsvc.ReportingWorker
-	AuthHandler      *authgrpc.AuthServer
+	RedisClient         redis.UniversalClient
+	ESClient            *elasticsearch.TypedClient
+	ServerHandler       *grpcserver.ServerManagementServer
+	ReportingHandler    *reportinggrpc.ReportingGrpcHandler
+	ReportingWorker     reportingsvc.ReportingWorker
+	AuthHandler         *authgrpc.AuthServer
 	NotificationService *notificationsvc.NotificationService
+	RESTImportExport    *resthandler.ImportExportHandler
 
 	Validator           protovalidate.Validator
 	Authenticator       *security.Authenticator

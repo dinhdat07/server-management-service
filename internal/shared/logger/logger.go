@@ -13,7 +13,7 @@ import (
 
 var Log *zap.Logger
 
-func InitLogger(cfg config.LoggerConfig) {
+func InitLogger(cfg config.LoggerConfig, appName string) {
 	// Create logs directory if it doesn't exist
 	if err := os.MkdirAll("logs", 0755); err != nil {
 		log.Fatalf("failed to create logs directory: %v", err)
@@ -32,8 +32,13 @@ func InitLogger(cfg config.LoggerConfig) {
 		maxAge = 28
 	}
 
+	logFile := "logs/app.log"
+	if appName != "" {
+		logFile = "logs/" + appName + ".log"
+	}
+
 	w := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   "logs/app.log",
+		Filename:   logFile,
 		MaxSize:    maxSize,
 		MaxBackups: maxBackups,
 		MaxAge:     maxAge,

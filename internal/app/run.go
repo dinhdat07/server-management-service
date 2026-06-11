@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -12,14 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	authv1 "server-management-service/gen/go/auth/v1"
-	reportingv1 "server-management-service/gen/go/reporting/v1"
-	server_managementv1 "server-management-service/gen/go/server_management/v1"
-	"server-management-service/internal/infrastructure/gateway"
 	"server-management-service/internal/shared/logger"
 )
 
@@ -34,9 +25,9 @@ func (a *App) Run() error {
 	grpcAddr := ":" + a.Config.GRPCPort
 	httpAddr := ":" + a.Config.HTTPPort
 
-	// Initialize Logger
-	logger.InitLogger(a.Config.Logger)
+	logger.InitLogger(a.Config.Logger, "api")
 
+	// --- gRPC server ---
 	a.GRPCServer = NewGRPCServer(GRPCServerDeps{
 		Validator:           a.Validator,
 		Authenticator:       a.Authenticator,
@@ -54,44 +45,15 @@ func (a *App) Run() error {
 		a.ReportingWorker.Start(ctx)
 	}
 
-	gwmux := runtime.NewServeMux(
-		runtime.WithIncomingHeaderMatcher(gateway.CustomIncomingMatcher),
-		runtime.WithOutgoingHeaderMatcher(gateway.CustomOutgoingMatcher),
-	)
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-
-	if err := server_managementv1.RegisterServerManagementServiceHandlerFromEndpoint(ctx, gwmux, grpcAddr, opts); err != nil {
-		return fmt.Errorf("failed to register server management gateway: %w", err)
+	// --- gRPC-gateway + HTTP routes ---
+	gwmux, err := a.setupGRPCGateway(ctx, grpcAddr)
+	if err != nil {
+		return err
 	}
-
-	if err := reportingv1.RegisterReportingServiceHandlerFromEndpoint(ctx, gwmux, grpcAddr, opts); err != nil {
-		return fmt.Errorf("failed to register reporting gateway: %w", err)
-	}
-
-	if err := authv1.RegisterAuthServiceHandlerFromEndpoint(ctx, gwmux, grpcAddr, opts); err != nil {
-		return fmt.Errorf("failed to register auth gateway: %w", err)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
-
-	// Serve OpenAPI JSON files
-	mux.Handle("/openapi/", http.StripPrefix("/openapi/", http.FileServer(http.Dir("./api/openapi"))))
-
-	// Serve Swagger UI
-	mux.HandleFunc("/docs", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./docs/swagger-ui.html")
-	})
-
-	// Mount the gRPC gateway to the root of the HTTP server with middleware
-	mux.Handle("/", gateway.CookieMiddleware(gwmux))
 
 	a.HTTPServer = &http.Server{
 		Addr:    httpAddr,
-		Handler: mux,
+		Handler: a.setupHTTPRoutes(gwmux),
 	}
 
 	errCh := make(chan error, 2)
