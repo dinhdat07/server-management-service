@@ -7,17 +7,19 @@ meta {
 post {
   auth: bearer
   url: {{baseURL}}/api/v1/servers
-  body: json}
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
 
 auth:bearer {
   token: {{accessToken}}
 }
 
 body:json {
-  {
-    "serverName": "unique-name-{{$randomInt}}",
-    "ipv4": "{{testServerIPv4}}"
-  }
+  {"serverName":"unique-{{$guid}}","ipv4":"{{testServerIPv4}}"}
 }
 
 assert {
