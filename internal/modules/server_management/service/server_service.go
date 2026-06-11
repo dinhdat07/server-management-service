@@ -106,7 +106,7 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 
 	if input.ServerName != server.ServerName {
 		existingName, err := s.repo.GetByName(ctx, input.ServerName)
-		if err != nil {
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return nil, err
 		}
 		if existingName != nil && existingName.ServerID != id {
@@ -117,7 +117,7 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 
 	if input.IPv4 != server.IPv4 {
 		existingIP, err := s.repo.GetByIPv4(ctx, input.IPv4)
-		if err != nil {
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return nil, err
 		}
 		if existingIP != nil && existingIP.ServerID != id {
