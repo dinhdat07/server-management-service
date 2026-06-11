@@ -37,7 +37,7 @@ type ServerService interface {
 	CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error)
 	UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error)
 	DeleteServer(ctx context.Context, id string) error
-	SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error)
+	SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int32, error)
 
 	ImportServers(ctx context.Context, fileBytes []byte) (*ImportResult, error)
 	ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error)
@@ -57,7 +57,7 @@ func NewServerService(repo repository.ServerRepository, cache redis.CacheManager
 
 func (s *serverService) CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error) {
 	existingName, err := s.repo.GetByName(ctx, input.ServerName)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
 	}
 	if existingName != nil {
@@ -65,7 +65,7 @@ func (s *serverService) CreateServer(ctx context.Context, input CreateServerInpu
 	}
 
 	existingIP, err := s.repo.GetByIPv4(ctx, input.IPv4)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
 	}
 	if existingIP != nil {
@@ -171,7 +171,7 @@ func (s *serverService) DeleteServer(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *serverService) SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error) {
+func (s *serverService) SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int32, error) {
 	if filter.Page < 1 {
 		filter.Page = 1
 	}

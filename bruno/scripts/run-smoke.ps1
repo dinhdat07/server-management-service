@@ -6,24 +6,15 @@ Write-Host "=== Bruno API Smoke Tests - SMS ===" -ForegroundColor Cyan
 Write-Host "Environment: $Env" -ForegroundColor Cyan
 
 Push-Location $collectionDir
-$folders = @("health", "auth", "servers", "reporting", "authorization")
-$failed = @()
-foreach ($folder in $folders) {
-    Write-Host "`n--- $folder ---" -ForegroundColor Yellow
-    bru run $folder --env $Env
-    if ($LASTEXITCODE -ne 0) {
-        $failed += $folder
-        Write-Host "  FAILED" -ForegroundColor Red
-    } else {
-        Write-Host "  PASSED" -ForegroundColor Green
-    }
-}
+Write-Host "`n--- all folders ---" -ForegroundColor Yellow
+bru run auth servers reporting health authorization --env $Env
+$exitCode = $LASTEXITCODE
 Pop-Location
 
-if ($failed.Count -eq 0) {
+if ($exitCode -eq 0) {
     Write-Host "`nALL TESTS PASSED" -ForegroundColor Green
     exit 0
 } else {
-    Write-Host "`nFAILED: $($failed -join ', ')" -ForegroundColor Red
+    Write-Host "`nFAILED (exit code: $exitCode)" -ForegroundColor Red
     exit 1
 }
