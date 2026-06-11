@@ -420,8 +420,8 @@
       "type": "object",
       "properties": {
         "totalCount": {
-          "type": "string",
-          "format": "int64"
+          "type": "integer",
+          "format": "int32"
         },
         "servers": {
           "type": "array",

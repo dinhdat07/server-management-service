@@ -10,6 +10,7 @@ import (
 	"server-management-service/internal/shared/database"
 
 	infraRedis "server-management-service/internal/infrastructure/redis"
+	"server-management-service/internal/infrastructure/storage"
 
 	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
 	reportingimpl "server-management-service/internal/modules/reporting/repository/impl"
@@ -19,17 +20,13 @@ import (
 
 	"buf.build/go/protovalidate"
 
-	"server-management-service/internal/infrastructure/security"
 	"server-management-service/internal/infrastructure/elasticsearch"
-	"server-management-service/internal/modules/identity/domain"
+	"server-management-service/internal/infrastructure/security"
 	authgrpc "server-management-service/internal/modules/identity/handler/grpcserver"
 	authrepo "server-management-service/internal/modules/identity/repository/impl"
 	authsvc "server-management-service/internal/modules/identity/service"
 	"server-management-service/internal/modules/notification/infrastructure/smtp"
 	notificationsvc "server-management-service/internal/modules/notification/service"
-
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 func New() (*App, error) {
@@ -44,15 +41,8 @@ func New() (*App, error) {
 		return nil, err
 	}
 
-	// AutoMigrate Identity
-	db.AutoMigrate(
-		&domain.User{},
-		&domain.AuthSession{},
-		&domain.RefreshToken{},
-	)
-
-	// Seeder
-	seedUsers(db, cfg.AdminEmail, cfg.AdminPassword, cfg.UserEmail, cfg.UserPassword)
+	storage.AutoMigrate(db)
+	storage.SeedUsers(db, cfg.AdminEmail, cfg.AdminPassword, cfg.UserEmail, cfg.UserPassword)
 
 	redisCfg, err := config.LoadRedisConfig()
 	if err != nil {
@@ -148,29 +138,3 @@ func New() (*App, error) {
 		RateLimitConfig:     rateLimitCfg,
 	}, nil
 }
-
-func seedUsers(db *gorm.DB, adminEmail, adminPassword, userEmail, userPassword string) {
-	if adminEmail == "" || adminPassword == "" {
-		log.Println("Admin credentials not set, skipping admin seeder.")
-	} else {
-		seedSingleUser(db, adminEmail, adminPassword, domain.RoleCodeAdmin)
-	}
-
-	if userEmail == "" || userPassword == "" {
-		log.Println("User credentials not set, skipping user seeder.")
-	} else {
-		seedSingleUser(db, userEmail, userPassword, domain.RoleCodeUser)
-	}
-}
-
-func seedSingleUser(db *gorm.DB, email, password string, role domain.RoleCode) {
-	var count int64
-	db.Model(&domain.User{}).Where("email = ?", email).Count(&count)
-	if count == 0 {
-		log.Printf("Seeding default %s user...", role)
-		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		db.Create(&domain.User{Email: email, Password: string(hash), RoleCode: role})
-	}
-}
-
-
