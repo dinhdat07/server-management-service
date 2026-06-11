@@ -7,17 +7,19 @@ meta {
 put {
   auth: bearer
   url: {{baseURL}}/api/v1/servers/{{createdServerId}}
-  body: json}
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
 
 auth:bearer {
   token: {{accessToken}}
 }
 
 body:json {
-  {
-    "serverName": "{{createdServerName}}-updated",
-    "ipv4": "{{testServerIPv4Alt}}"
-  }
+  {"serverName":"{{createdServerName}}-updated","ipv4":"{{testServerIPv4Alt}}"}
 }
 
 assert {

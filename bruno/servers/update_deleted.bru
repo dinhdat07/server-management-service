@@ -7,17 +7,19 @@ meta {
 put {
   auth: bearer
   url: {{baseURL}}/api/v1/servers/{{deletedServerId}}
-  body: json}
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
 
 auth:bearer {
   token: {{accessToken}}
 }
 
 body:json {
-  {
-    "serverName": "resurrect",
-    "ipv4": "10.0.0.98"
-  }
+  {"serverName":"resurrect","ipv4":"10.0.0.98"}
 }
 
 assert {
