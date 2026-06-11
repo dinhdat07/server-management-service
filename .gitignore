@@ -1,7 +1,7 @@
 # Environment
 .env
 docs/internal-requirement.md
-
+docs/superpowers
 # Build artifacts
 *.exe
 *.test
