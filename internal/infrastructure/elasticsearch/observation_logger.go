@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -44,7 +45,7 @@ func (l *observationLogger) LogObservation(ctx context.Context, serverID string,
 	}
 
 	_, err = l.client.Index(l.index).
-		Request(body).
+		Request(bytes.NewReader(body)).
 		Do(ctx)
 
 	if err != nil {
