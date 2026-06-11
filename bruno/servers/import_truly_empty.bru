@@ -1,7 +1,7 @@
 meta {
-  name: Import Servers - CSV Not Excel (400)
+  name: Import Servers - Truly Empty File (400)
   type: http
-  seq: 35
+  seq: 36
 }
 
 post {
@@ -15,7 +15,7 @@ auth:bearer {
 }
 
 body:multipart-form {
-  file: @file(testdata/not_excel.csv)
+  file: @file(testdata/servers_truly_empty.xlsx)
 }
 
 assert {

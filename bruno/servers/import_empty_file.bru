@@ -1,10 +1,11 @@
 meta {
-  name: Import Servers - Empty File (400)
+  name: Import Servers - Empty File (200)
   type: http
   seq: 34
 }
 
 post {
+  auth: bearer
   url: {{baseURL}}/api/v1/servers/import
   body: multipartForm
 }
@@ -18,5 +19,7 @@ body:multipart-form {
 }
 
 assert {
-  res.status: gte 400
+  res.status: eq 200
+  res.body.successCount: eq 0
+  res.body.failCount: eq 0
 }

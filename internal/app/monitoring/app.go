@@ -15,6 +15,7 @@ import (
 	"server-management-service/internal/modules/monitoring/worker"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
+	"server-management-service/internal/shared/logger"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -25,6 +26,14 @@ type App struct {
 }
 
 func NewApp() (*App, error) {
+	// Initialize logger
+	cfg, _ := config.Load()
+	if cfg != nil {
+		logger.InitLogger(cfg.Logger, "monitoring-worker")
+	} else {
+		logger.InitLogger(config.LoggerConfig{}, "monitoring-worker")
+	}
+
 	// Load Configurations
 	dbDSN := os.Getenv("DATABASE_URL")
 	if dbDSN == "" {

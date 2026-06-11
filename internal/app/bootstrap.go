@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"server-management-service/internal/modules/server_management/handler/grpcserver"
+	resthandler "server-management-service/internal/modules/server_management/handler/rest"
 	"server-management-service/internal/modules/server_management/repository/impl"
 	"server-management-service/internal/modules/server_management/service"
 	"server-management-service/internal/shared/config"
@@ -88,6 +89,7 @@ func New() (*App, error) {
 	serverCache := infraRedis.NewServerCache(redisClient)
 	serverSvc := service.NewServerService(serverRepo, serverCache)
 	serverHandler := grpcserver.NewServerManagementServer(serverSvc)
+	restImportExport := resthandler.NewImportExportHandler(serverSvc)
 
 	smtpConfig := smtp.Config{
 		Host:     cfg.SMTP.Host,
@@ -128,6 +130,7 @@ func New() (*App, error) {
 		ReportingWorker:     reportingWorker,
 		AuthHandler:         authHandler,
 		NotificationService: notificationService,
+		RESTImportExport:    restImportExport,
 
 		Validator:           validator,
 		Authenticator:       security.NewAuthenticator(cfg.JWTSecret, redisClient),

@@ -1,7 +1,7 @@
 meta {
   name: Export Servers (Success)
   type: http
-  seq: 37
+  seq: 38
 }
 
 get {
@@ -15,6 +15,12 @@ auth:bearer {
 
 assert {
   res.status: eq 200
-  res.body.fileContent: isString
-  res.body.filename: isString
+}
+
+script:post-response {
+  // Export returns binary Excel, not JSON — verify via Content-Type header
+  const ct = res.headers['content-type'] || res.headers['Content-Type'] || '';
+  if (!ct.includes('spreadsheetml')) {
+    throw new Error('Expected Excel Content-Type, got: ' + ct);
+  }
 }
