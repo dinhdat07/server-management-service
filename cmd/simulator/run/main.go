@@ -62,6 +62,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("init monitoring app: %w", err)
 	}
+	defer app.Shutdown()
 
 	// Run rounds
 	var metrics []roundMetrics

@@ -29,7 +29,7 @@ echo "=== Setting up nftables ==="
 nft add table inet sim
 nft add chain inet sim input { type filter hook input priority 0 \; }
 nft add set inet sim down_ips { type ipv4_addr \; }
-nft add rule inet sim input ip saddr @down_ips icmp type echo-request drop
+nft add rule inet sim input ip daddr @down_ips icmp type echo-request drop
 
 echo "=== Starting API server ==="
 exec ./server-simulator

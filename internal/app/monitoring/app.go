@@ -23,6 +23,7 @@ import (
 type App struct {
 	RedisClient redis.UniversalClient
 	Pool        worker.Pool
+	esLogger    elasticsearch.ObservationLogger
 }
 
 func NewApp() (*App, error) {
@@ -66,7 +67,7 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("elasticsearch connection failed: %w", err)
 	}
-	esLogger := elasticsearch.NewObservationLogger(esClient, esCfg.ServerIndex)
+	esLogger := elasticsearch.NewObservationLogger(esClient, esCfg.ServerIndex, config.LoadObservationLoggerConfig())
 
 	// Initialize Dependencies
 	repo := impl.NewGormMonitoringRepository(db)
@@ -88,7 +89,14 @@ func NewApp() (*App, error) {
 	return &App{
 		RedisClient: redisClient,
 		Pool:        pool,
+		esLogger:    esLogger,
 	}, nil
+}
+
+func (a *App) Shutdown() {
+	if a.esLogger != nil {
+		a.esLogger.Shutdown()
+	}
 }
 
 func (a *App) Run() error {
@@ -125,10 +133,14 @@ func (a *App) Run() error {
 	log.Println("Shutting down Monitoring Worker...")
 	cancel()
 
-	// Wait a bit for running workers to finish
+	// Wait for running workers to finish
 	time.Sleep(2 * time.Second)
-	log.Println("Monitoring Worker stopped.")
 
+	if a.esLogger != nil {
+		a.esLogger.Shutdown()
+	}
+
+	log.Println("Monitoring Worker stopped.")
 	return nil
 }
 
