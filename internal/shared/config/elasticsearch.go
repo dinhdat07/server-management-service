@@ -15,7 +15,7 @@ func LoadElasticsearchConfig() ElasticsearchConfig {
 
 	serverIndex := os.Getenv("ELASTICSEARCH_SERVER_INDEX")
 	if serverIndex == "" {
-		serverIndex = "sms_server_catalog"
+		serverIndex = "sms_observation_logs"
 	}
 
 	return ElasticsearchConfig{

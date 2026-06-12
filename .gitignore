@@ -1,2 +1,22 @@
+# Environment
 .env
 docs/internal-requirement.md
+
+# Build artifacts
+*.exe
+*.test
+bin/
+tmp/
+
+# Coverage output
+*.out
+cov*
+c.out
+coverage*
+
+# Logs
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

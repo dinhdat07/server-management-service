@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 
+	"server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
 )
@@ -36,20 +38,20 @@ type ServerService interface {
 	UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error)
 	DeleteServer(ctx context.Context, id string) error
 	SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error)
-	
+
 	ImportServers(ctx context.Context, fileBytes []byte) (*ImportResult, error)
 	ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error)
 }
 
 type serverService struct {
-	repo       repository.ServerRepository
-	searchRepo repository.ServerReadRepository
+	repo  repository.ServerRepository
+	cache redis.CacheManager
 }
 
-func NewServerService(repo repository.ServerRepository, searchRepo repository.ServerReadRepository) ServerService {
+func NewServerService(repo repository.ServerRepository, cache redis.CacheManager) ServerService {
 	return &serverService{
-		repo:       repo,
-		searchRepo: searchRepo,
+		repo:  repo,
+		cache: cache,
 	}
 }
 
@@ -78,6 +80,13 @@ func (s *serverService) CreateServer(ctx context.Context, input CreateServerInpu
 	err = s.repo.Create(ctx, server)
 	if err != nil {
 		return nil, err
+	}
+
+	// Dual-Write to Redis
+	if s.cache != nil {
+		if err := s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), 0); err != nil {
+			log.Printf("[WARNING] DB Create succeeded but Redis sync failed for ServerID %s: %v", server.ServerID, err)
+		}
 	}
 
 	return server, nil
@@ -122,6 +131,13 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 		return nil, err
 	}
 
+	// Dual-Write to Redis
+	if s.cache != nil {
+		if err := s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), server.ConsecutiveFailures); err != nil {
+			log.Printf("[WARNING] DB Update succeeded but Redis sync failed for ServerID %s: %v", server.ServerID, err)
+		}
+	}
+
 	return server, nil
 }
 
@@ -144,6 +160,14 @@ func (s *serverService) DeleteServer(ctx context.Context, id string) error {
 		}
 		return err
 	}
+
+	// Dual-Write to Redis
+	if s.cache != nil {
+		if err := s.cache.Delete(ctx, id); err != nil {
+			log.Printf("[WARNING] DB Delete succeeded but Redis sync failed for ServerID %s: %v", id, err)
+		}
+	}
+
 	return nil
 }
 
@@ -154,10 +178,10 @@ func (s *serverService) SearchServers(ctx context.Context, filter repository.Ser
 	if filter.PageSize < 1 || filter.PageSize > 100 {
 		filter.PageSize = 20
 	}
-	
+
 	if filter.Status != "" && !domain.ServerStatus(filter.Status).IsValid() {
 		return nil, 0, errors.New("invalid status filter")
 	}
 
-	return s.searchRepo.Search(ctx, filter)
+	return s.repo.Search(ctx, filter)
 }

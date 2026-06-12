@@ -111,3 +111,39 @@ func (r *GormServerRepository) BatchCreate(ctx context.Context, servers []*domai
 	}
 	return r.getDB(ctx).Create(&servers).Error
 }
+
+func (r *GormServerRepository) Search(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error) {
+	query := r.getDB(ctx).Model(&domain.Server{})
+
+	if filter.Status != "" {
+		query = query.Where("current_status = ?", filter.Status)
+	}
+	if filter.Name != "" {
+		query = query.Where("server_name ILIKE ?", "%"+filter.Name+"%")
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if filter.SortBy != "" {
+		direction := "asc"
+		if strings.ToLower(filter.SortDirection) == "desc" {
+			direction = "desc"
+		}
+		query = query.Order(filter.SortBy + " " + direction)
+	} else {
+		query = query.Order("created_at desc")
+	}
+
+	offset := (filter.Page - 1) * filter.PageSize
+	query = query.Offset(offset).Limit(filter.PageSize)
+
+	var servers []*domain.Server
+	if err := query.Find(&servers).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return servers, total, nil
+}
