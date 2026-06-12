@@ -11,9 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"google.golang.org/grpc"
-	
-	server_managementv1 "server-management-service/gen/go/server_management/v1"
+	"server-management-service/internal/shared/logger"
 )
 
 func (a *App) Run() error {
@@ -27,23 +25,35 @@ func (a *App) Run() error {
 	grpcAddr := ":" + a.Config.GRPCPort
 	httpAddr := ":" + a.Config.HTTPPort
 
-	// TODO: Replace with proper GRPC server initialization in Phase 2 (Auth Interceptor)
-	a.GRPCServer = grpc.NewServer()
-	
-	if a.ServerHandler != nil {
-		server_managementv1.RegisterServerManagementServiceServer(a.GRPCServer, a.ServerHandler)
+	logger.InitLogger(a.Config.Logger, "api")
+
+	// --- gRPC server ---
+	a.GRPCServer = NewGRPCServer(GRPCServerDeps{
+		Validator:           a.Validator,
+		Authenticator:       a.Authenticator,
+		Authorizer:          a.Authorizer,
+		CSRFManager:         a.CSRFManager,
+		Auth:                a.AuthHandler,
+		Reporting:           a.ReportingHandler,
+		ServerManagement:    a.ServerHandler,
+		RateLimiter:         a.RateLimiter,
+		RateLimitKeyBuilder: a.RateLimitKeyBuilder,
+		RateLimitConfig:     a.RateLimitConfig,
+	})
+
+	if a.ReportingWorker != nil {
+		a.ReportingWorker.Start(ctx)
 	}
 
-	// TODO: Replace with proper gateway mux in Phase 2
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	// --- gRPC-gateway + HTTP routes ---
+	gwmux, err := a.setupGRPCGateway(ctx, grpcAddr)
+	if err != nil {
+		return err
+	}
 
 	a.HTTPServer = &http.Server{
 		Addr:    httpAddr,
-		Handler: mux,
+		Handler: a.setupHTTPRoutes(gwmux),
 	}
 
 	errCh := make(chan error, 2)
@@ -99,6 +109,10 @@ func (a *App) Shutdown(ctx context.Context) error {
 		if err := a.HTTPServer.Shutdown(shutdownCtx); err != nil {
 			return err
 		}
+	}
+
+	if a.ReportingWorker != nil {
+		a.ReportingWorker.Stop()
 	}
 
 	log.Println("application stopped gracefully")

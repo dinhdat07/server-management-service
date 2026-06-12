@@ -39,9 +39,6 @@ func (a *Authenticator) Authenticate(ctx context.Context, tokenString string) (*
 		return nil, errors.New("invalid claims")
 	}
 
-	// FUTURE DIRECTION: Currently using a Shared Redis architecture for quick validation.
-	// In the future, to achieve pure Database Isolation, we should switch to Event-Driven Revocation 
-	// (listen to Kafka `session.revoked` event and maintain a local blacklist).
 	if a.redisClient != nil && parsedClaims.SessionID != "" {
 		revokedKey := "revoked_session:" + parsedClaims.SessionID
 		isRevoked, err := a.redisClient.Exists(ctx, revokedKey).Result()

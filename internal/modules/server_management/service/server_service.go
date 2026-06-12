@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 
+	"server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
 )
@@ -35,27 +37,27 @@ type ServerService interface {
 	CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error)
 	UpdateServer(ctx context.Context, id string, input UpdateServerInput) (*domain.Server, error)
 	DeleteServer(ctx context.Context, id string) error
-	SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error)
-	
+	SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int32, error)
+
 	ImportServers(ctx context.Context, fileBytes []byte) (*ImportResult, error)
 	ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error)
 }
 
 type serverService struct {
-	repo       repository.ServerRepository
-	searchRepo repository.ServerReadRepository
+	repo  repository.ServerRepository
+	cache redis.CacheManager
 }
 
-func NewServerService(repo repository.ServerRepository, searchRepo repository.ServerReadRepository) ServerService {
+func NewServerService(repo repository.ServerRepository, cache redis.CacheManager) ServerService {
 	return &serverService{
-		repo:       repo,
-		searchRepo: searchRepo,
+		repo:  repo,
+		cache: cache,
 	}
 }
 
 func (s *serverService) CreateServer(ctx context.Context, input CreateServerInput) (*domain.Server, error) {
 	existingName, err := s.repo.GetByName(ctx, input.ServerName)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
 	}
 	if existingName != nil {
@@ -63,7 +65,7 @@ func (s *serverService) CreateServer(ctx context.Context, input CreateServerInpu
 	}
 
 	existingIP, err := s.repo.GetByIPv4(ctx, input.IPv4)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
 	}
 	if existingIP != nil {
@@ -78,6 +80,13 @@ func (s *serverService) CreateServer(ctx context.Context, input CreateServerInpu
 	err = s.repo.Create(ctx, server)
 	if err != nil {
 		return nil, err
+	}
+
+	// Dual-Write to Redis
+	if s.cache != nil {
+		if err := s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), 0); err != nil {
+			log.Printf("[WARNING] DB Create succeeded but Redis sync failed for ServerID %s: %v", server.ServerID, err)
+		}
 	}
 
 	return server, nil
@@ -97,7 +106,7 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 
 	if input.ServerName != server.ServerName {
 		existingName, err := s.repo.GetByName(ctx, input.ServerName)
-		if err != nil {
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return nil, err
 		}
 		if existingName != nil && existingName.ServerID != id {
@@ -108,7 +117,7 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 
 	if input.IPv4 != server.IPv4 {
 		existingIP, err := s.repo.GetByIPv4(ctx, input.IPv4)
-		if err != nil {
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return nil, err
 		}
 		if existingIP != nil && existingIP.ServerID != id {
@@ -120,6 +129,13 @@ func (s *serverService) UpdateServer(ctx context.Context, id string, input Updat
 	err = s.repo.Update(ctx, server)
 	if err != nil {
 		return nil, err
+	}
+
+	// Dual-Write to Redis
+	if s.cache != nil {
+		if err := s.cache.Upsert(ctx, server.ServerID, server.IPv4, string(server.CurrentStatus), server.ConsecutiveFailures); err != nil {
+			log.Printf("[WARNING] DB Update succeeded but Redis sync failed for ServerID %s: %v", server.ServerID, err)
+		}
 	}
 
 	return server, nil
@@ -144,20 +160,28 @@ func (s *serverService) DeleteServer(ctx context.Context, id string) error {
 		}
 		return err
 	}
+
+	// Dual-Write to Redis
+	if s.cache != nil {
+		if err := s.cache.Delete(ctx, id); err != nil {
+			log.Printf("[WARNING] DB Delete succeeded but Redis sync failed for ServerID %s: %v", id, err)
+		}
+	}
+
 	return nil
 }
 
-func (s *serverService) SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error) {
+func (s *serverService) SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int32, error) {
 	if filter.Page < 1 {
 		filter.Page = 1
 	}
 	if filter.PageSize < 1 || filter.PageSize > 100 {
 		filter.PageSize = 20
 	}
-	
+
 	if filter.Status != "" && !domain.ServerStatus(filter.Status).IsValid() {
 		return nil, 0, errors.New("invalid status filter")
 	}
 
-	return s.searchRepo.Search(ctx, filter)
+	return s.repo.Search(ctx, filter)
 }
