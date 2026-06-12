@@ -193,12 +193,12 @@ func TestSearchServers_WithFilters(t *testing.T) {
 		{ServerID: "id-2", ServerName: "srv-b", IPv4: "2.2.2.2", CurrentStatus: domain.ServerStatusOffline},
 	}
 	filter := repository.ServerListFilter{Page: 1, PageSize: 20, Status: "ONLINE", Name: "srv"}
-	repo.On("Search", ctx, filter).Return(servers, int64(2), nil).Once()
+	repo.On("Search", ctx, filter).Return(servers, int32(2), nil).Once()
 
 	results, total, err := svc.SearchServers(ctx, filter)
 
 	assert.NoError(t, err)
-	assert.Equal(t, int64(2), total)
+	assert.Equal(t, int32(2), total)
 	assert.Len(t, results, 2)
 }
 
@@ -208,12 +208,12 @@ func TestSearchServers_Empty(t *testing.T) {
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 20}
-	repo.On("Search", ctx, filter).Return([]*domain.Server{}, int64(0), nil).Once()
+	repo.On("Search", ctx, filter).Return([]*domain.Server{}, int32(0), nil).Once()
 
 	results, total, err := svc.SearchServers(ctx, filter)
 
 	assert.NoError(t, err)
-	assert.Equal(t, int64(0), total)
+	assert.Equal(t, int32(0), total)
 	assert.Empty(t, results)
 }
 
@@ -224,7 +224,7 @@ func TestSearchServers_DBError(t *testing.T) {
 
 	dbErr := errors.New("query failed")
 	filter := repository.ServerListFilter{Page: 1, PageSize: 20}
-	repo.On("Search", ctx, filter).Return(nil, int64(0), dbErr).Once()
+	repo.On("Search", ctx, filter).Return(nil, int32(0), dbErr).Once()
 
 	_, _, err := svc.SearchServers(ctx, filter)
 	assert.ErrorIs(t, err, dbErr)
@@ -431,7 +431,7 @@ func TestExportServers_Success(t *testing.T) {
 		{ServerID: "id-1", ServerName: "srv-a", IPv4: "1.1.1.1", CurrentStatus: domain.ServerStatusOnline},
 	}
 	filter := repository.ServerListFilter{Page: 1, PageSize: 100}
-	repo.On("Search", ctx, filter).Return(servers, int64(1), nil).Once()
+	repo.On("Search", ctx, filter).Return(servers, int32(1), nil).Once()
 
 	fileBytes, filename, err := svc.ExportServers(ctx, filter)
 
@@ -447,7 +447,7 @@ func TestExportServers_EmptyResults(t *testing.T) {
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 100}
-	repo.On("Search", ctx, filter).Return([]*domain.Server{}, int64(0), nil).Once()
+	repo.On("Search", ctx, filter).Return([]*domain.Server{}, int32(0), nil).Once()
 
 	fileBytes, filename, err := svc.ExportServers(ctx, filter)
 
@@ -463,7 +463,7 @@ func TestExportServers_DBError(t *testing.T) {
 
 	dbErr := errors.New("db connection lost")
 	filter := repository.ServerListFilter{Page: 1, PageSize: 100}
-	repo.On("Search", ctx, filter).Return(nil, int64(0), dbErr).Once()
+	repo.On("Search", ctx, filter).Return(nil, int32(0), dbErr).Once()
 
 	_, _, err := svc.ExportServers(ctx, filter)
 
@@ -658,11 +658,11 @@ func TestSearchServers_PageZeroDefaultsToOne(t *testing.T) {
 
 	// The service should normalize Page=0 to Page=1
 	filter := repository.ServerListFilter{Page: 0, PageSize: 20}
-	repo.On("Search", ctx, repository.ServerListFilter{Page: 1, PageSize: 20}).Return([]*domain.Server{}, int64(0), nil).Once()
+	repo.On("Search", ctx, repository.ServerListFilter{Page: 1, PageSize: 20}).Return([]*domain.Server{}, int32(0), nil).Once()
 
 	results, total, err := svc.SearchServers(ctx, filter)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(0), total)
+	assert.Equal(t, int32(0), total)
 	assert.Empty(t, results)
 }
 
@@ -673,7 +673,7 @@ func TestSearchServers_PageSizeZeroDefaults(t *testing.T) {
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 0}
-	repo.On("Search", ctx, repository.ServerListFilter{Page: 1, PageSize: 20}).Return([]*domain.Server{}, int64(0), nil).Once()
+	repo.On("Search", ctx, repository.ServerListFilter{Page: 1, PageSize: 20}).Return([]*domain.Server{}, int32(0), nil).Once()
 
 	_, _, err := svc.SearchServers(ctx, filter)
 	assert.NoError(t, err)
@@ -686,7 +686,7 @@ func TestSearchServers_PageSizeExceedsMax(t *testing.T) {
 	svc := newTestSvcNoCache(repo)
 
 	filter := repository.ServerListFilter{Page: 1, PageSize: 101}
-	repo.On("Search", ctx, repository.ServerListFilter{Page: 1, PageSize: 20}).Return([]*domain.Server{}, int64(0), nil).Once()
+	repo.On("Search", ctx, repository.ServerListFilter{Page: 1, PageSize: 20}).Return([]*domain.Server{}, int32(0), nil).Once()
 
 	_, _, err := svc.SearchServers(ctx, filter)
 	assert.NoError(t, err)
