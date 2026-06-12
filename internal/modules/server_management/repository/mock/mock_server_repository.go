@@ -403,7 +403,7 @@ func (_c *MockServerRepository_GetByName_Call) RunAndReturn(run func(context.Con
 }
 
 // Search provides a mock function with given fields: ctx, filter
-func (_m *MockServerRepository) Search(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error) {
+func (_m *MockServerRepository) Search(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int32, error) {
 	ret := _m.Called(ctx, filter)
 
 	if len(ret) == 0 {
@@ -411,9 +411,9 @@ func (_m *MockServerRepository) Search(ctx context.Context, filter repository.Se
 	}
 
 	var r0 []*domain.Server
-	var r1 int64
+	var r1 int32
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, repository.ServerListFilter) ([]*domain.Server, int64, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, repository.ServerListFilter) ([]*domain.Server, int32, error)); ok {
 		return rf(ctx, filter)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, repository.ServerListFilter) []*domain.Server); ok {
@@ -424,10 +424,10 @@ func (_m *MockServerRepository) Search(ctx context.Context, filter repository.Se
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, repository.ServerListFilter) int64); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, repository.ServerListFilter) int32); ok {
 		r1 = rf(ctx, filter)
 	} else {
-		r1 = ret.Get(1).(int64)
+		r1 = ret.Get(1).(int32)
 	}
 
 	if rf, ok := ret.Get(2).(func(context.Context, repository.ServerListFilter) error); ok {
@@ -458,12 +458,12 @@ func (_c *MockServerRepository_Search_Call) Run(run func(ctx context.Context, fi
 	return _c
 }
 
-func (_c *MockServerRepository_Search_Call) Return(_a0 []*domain.Server, _a1 int64, _a2 error) *MockServerRepository_Search_Call {
+func (_c *MockServerRepository_Search_Call) Return(_a0 []*domain.Server, _a1 int32, _a2 error) *MockServerRepository_Search_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockServerRepository_Search_Call) RunAndReturn(run func(context.Context, repository.ServerListFilter) ([]*domain.Server, int64, error)) *MockServerRepository_Search_Call {
+func (_c *MockServerRepository_Search_Call) RunAndReturn(run func(context.Context, repository.ServerListFilter) ([]*domain.Server, int32, error)) *MockServerRepository_Search_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -23,7 +23,7 @@ $token = $login.accessToken
 $headers = @{Authorization = "Bearer $token"}
 
 Write-Host "=== Finding test servers ===" -ForegroundColor Cyan
-$response = Invoke-RestMethod -Uri "$BaseURL/api/v1/servers?limit=100" -Headers $headers
+$response = Invoke-RestMethod -Uri "$BaseURL/api/v1/servers?page=1&limit=100" -Headers $headers
 $testServers = $response.servers | Where-Object {
     $_.serverName -like "import-srv-*" -or
     $_.serverName -like "bruno-test-*" -or
