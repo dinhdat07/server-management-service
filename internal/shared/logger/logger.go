@@ -1,23 +1,60 @@
 package logger
 
 import (
-	"io"
 	"log"
 	"os"
+
+	"server-management-service/internal/shared/config"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func InitLogger() {
-	file, err := os.OpenFile(
-		"logs/app.log",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0644,
-	)
+var Log *zap.Logger
 
-	if err != nil {
-		log.Fatal(err)
+func InitLogger(cfg config.LoggerConfig, appName string) {
+	// Create logs directory if it doesn't exist
+	if err := os.MkdirAll("logs", 0755); err != nil {
+		log.Fatalf("failed to create logs directory: %v", err)
 	}
 
-	mw := io.MultiWriter(os.Stdout, file)
-	log.SetOutput(mw)
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	maxSize := cfg.LogMaxSize
+	if maxSize <= 0 {
+		maxSize = 10
+	}
+	maxBackups := cfg.LogMaxBackups
+	if maxBackups < 0 {
+		maxBackups = 3
+	}
+	maxAge := cfg.LogMaxAge
+	if maxAge <= 0 {
+		maxAge = 28
+	}
+
+	logFile := "logs/app.log"
+	if appName != "" {
+		logFile = "logs/" + appName + ".log"
+	}
+
+	w := zapcore.AddSync(&lumberjack.Logger{
+		Filename:   logFile,
+		MaxSize:    maxSize,
+		MaxBackups: maxBackups,
+		MaxAge:     maxAge,
+		Compress:   cfg.LogCompress,
+	})
+
+	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	fileEncoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
+
+	core := zapcore.NewTee(
+		zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), zap.InfoLevel),
+		zapcore.NewCore(fileEncoder, w, zap.InfoLevel),
+	)
+
+	Log = zap.New(core, zap.AddCaller())
+
+	zap.ReplaceGlobals(Log)
+	zap.RedirectStdLog(Log)
 }

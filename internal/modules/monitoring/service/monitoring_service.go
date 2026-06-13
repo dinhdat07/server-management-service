@@ -3,13 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"strconv"
 
-	"server-management-service/internal/modules/monitoring/domain"
+	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/monitoring/repository"
 	serverDomain "server-management-service/internal/modules/server_management/domain"
-
-	"github.com/redis/go-redis/v9"
 )
 
 type MonitoringService interface {
@@ -17,48 +14,42 @@ type MonitoringService interface {
 }
 
 type monitoringServiceImpl struct {
-	repo      repository.MonitoringRepository
-	rdb       redis.UniversalClient
-	txManager repository.TxManager
+	repo             repository.MonitoringRepository
+	stateStore       repository.ServerStateStore
+	esLogger         elasticsearch.ObservationLogger
+	failureThreshold int
 }
 
-func NewMonitoringService(repo repository.MonitoringRepository, rdb redis.UniversalClient, txManager repository.TxManager) MonitoringService {
+func NewMonitoringService(repo repository.MonitoringRepository, stateStore repository.ServerStateStore, esLogger elasticsearch.ObservationLogger, failureThreshold int) MonitoringService {
 	return &monitoringServiceImpl{
-		repo:      repo,
-		rdb:       rdb,
-		txManager: txManager,
+		repo:             repo,
+		stateStore:       stateStore,
+		esLogger:         esLogger,
+		failureThreshold: failureThreshold,
 	}
 }
 
 func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, ip string, pingSuccess bool) error {
-	redisKey := fmt.Sprintf("server:info:%s", serverID)
+	// Fire-and-forget: buffered, non-blocking, flushed in bulk
+	s.esLogger.LogObservation(ctx, serverID, pingSuccess)
 
-	// Fetch current status and retry count from Redis
-	vals, err := s.rdb.HGetAll(ctx, redisKey).Result()
+	// Fetch current status and retry count from state store (Redis)
+	state, err := s.stateStore.GetServerState(ctx, serverID)
 	if err != nil {
-		return fmt.Errorf("failed to get server info from redis: %w", err)
+		return err
 	}
 
-	if len(vals) == 0 {
-		return fmt.Errorf("server info not found in redis for id: %s", serverID)
-	}
-
-	currentStatusStr := vals["status"]
+	currentStatusStr := state.Status
 	if currentStatusStr == "" {
 		currentStatusStr = string(serverDomain.ServerStatusOnline) // Default
 	}
 	currentStatus := serverDomain.ServerStatus(currentStatusStr)
 
-	retryCountStr := vals["retry_count"]
-	retryCount := 0
-	if retryCountStr != "" {
-		retryCount, _ = strconv.Atoi(retryCountStr)
-	}
+	retryCount := state.RetryCount
 
 	// State Machine Evaluation
 	var newStatus serverDomain.ServerStatus
 	var statusChanged bool
-	var reason string
 
 	if pingSuccess {
 		if currentStatus == serverDomain.ServerStatusOffline {
@@ -66,7 +57,6 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 			newStatus = serverDomain.ServerStatusOnline
 			statusChanged = true
 			retryCount = 0
-			reason = "ICMP Ping Succeeded (Recovery)"
 		} else {
 			// Already online, reset retry count if > 0
 			retryCount = 0
@@ -74,11 +64,10 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 	} else {
 		if currentStatus == serverDomain.ServerStatusOnline {
 			retryCount++
-			if retryCount >= 2 { // Failure Threshold = 2
+			if retryCount >= s.failureThreshold {
 				newStatus = serverDomain.ServerStatusOffline
 				statusChanged = true
 				retryCount = 0
-				reason = "ICMP Ping Failed 2 consecutive times"
 			}
 		} else {
 			// Already offline
@@ -88,28 +77,25 @@ func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, i
 
 	// Update Redis cache
 	if statusChanged {
-		err = s.rdb.HSet(ctx, redisKey, "status", string(newStatus), "retry_count", retryCount).Err()
+		err = s.stateStore.SetServerState(ctx, serverID, string(newStatus), retryCount)
 	} else {
-		err = s.rdb.HSet(ctx, redisKey, "status", string(currentStatus), "retry_count", retryCount).Err()
+		err = s.stateStore.SetServerState(ctx, serverID, string(currentStatus), retryCount)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to update redis status: %w", err)
+		return err
 	}
 
-	// Persist the transition and update Postgres
+	// Update Postgres ONLY if state actually changes
 	if statusChanged {
-		event := &domain.StatusTransitionEvent{
-			ServerID:       serverID,
-			PreviousStatus: string(currentStatus),
-			CurrentStatus:  string(newStatus),
-			Reason:         reason,
-		}
-
-		err = s.txManager.WithTx(ctx, func(txCtx context.Context) error {
-			return s.repo.SaveTransitionAndUpdateServer(txCtx, event, newStatus)
-		})
+		err = s.repo.UpdateServerStatus(ctx, serverID, newStatus, retryCount)
 		if err != nil {
-			return fmt.Errorf("failed to save transition to db: %w", err)
+			return fmt.Errorf("failed to update server status in postgres: %w", err)
+		}
+	} else if retryCount > 0 && !pingSuccess && currentStatus == serverDomain.ServerStatusOnline {
+		// Update consecutive failures even if status hasn't changed to offline yet
+		err = s.repo.UpdateServerStatus(ctx, serverID, currentStatus, retryCount)
+		if err != nil {
+			return fmt.Errorf("failed to update consecutive failures in postgres: %w", err)
 		}
 	}
 

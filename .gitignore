@@ -1,2 +1,25 @@
+# Environment
 .env
 docs/internal-requirement.md
+docs/superpowers
+# Build artifacts
+*.exe
+*.test
+simulator-linux
+monitoring-worker-linux
+bin/
+tmp/
+
+# Coverage output
+*.out
+cov*
+c.out
+coverage*
+
+# Logs
+logs/
+.codex-run/
+
+# OS
+.DS_Store
+Thumbs.db

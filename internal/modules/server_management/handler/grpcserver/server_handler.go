@@ -5,8 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"strings"
-
 	server_managementv1 "server-management-service/gen/go/server_management/v1"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
@@ -33,6 +31,13 @@ func mapError(err error) error {
 	}
 	if errors.Is(err, service.ErrIPv4Exists) || errors.Is(err, service.ErrNameExists) {
 		return gstatus.Error(codes.AlreadyExists, err.Error())
+	}
+	if errors.Is(err, service.ErrFileTooLarge) ||
+		errors.Is(err, service.ErrInvalidFormat) ||
+		errors.Is(err, service.ErrNoSheets) ||
+		errors.Is(err, service.ErrEmptyFile) ||
+		errors.Is(err, service.ErrMissingCols) {
+		return gstatus.Error(codes.InvalidArgument, err.Error())
 	}
 	return gstatus.Error(codes.Internal, err.Error())
 }
@@ -122,7 +127,7 @@ func (s *ServerManagementServer) ViewServers(ctx context.Context, req *server_ma
 
 	servers, totalCount, err := s.serverService.SearchServers(ctx, filter)
 	if err != nil {
-		return nil, gstatus.Error(codes.Internal, err.Error())
+		return nil, mapError(err)
 	}
 
 	var pbServers []*server_managementv1.Server
@@ -143,13 +148,7 @@ func (s *ServerManagementServer) ImportServers(ctx context.Context, req *server_
 
 	result, err := s.serverService.ImportServers(ctx, req.GetFileContent())
 	if err != nil {
-		if err.Error() == "file size exceeds 2MB limit" {
-			return nil, gstatus.Error(codes.InvalidArgument, err.Error())
-		}
-		if err.Error() == "invalid excel file format" || err.Error() == "empty excel file" || strings.HasPrefix(err.Error(), "missing required columns") {
-			return nil, gstatus.Error(codes.InvalidArgument, err.Error())
-		}
-		return nil, gstatus.Error(codes.Internal, err.Error())
+		return nil, mapError(err)
 	}
 
 	return &server_managementv1.ImportServersResponse{
@@ -176,7 +175,7 @@ func (s *ServerManagementServer) ExportServers(ctx context.Context, req *server_
 
 	fileBytes, filename, err := s.serverService.ExportServers(ctx, filter)
 	if err != nil {
-		return nil, gstatus.Error(codes.Internal, err.Error())
+		return nil, mapError(err)
 	}
 
 	return &server_managementv1.ExportServersResponse{

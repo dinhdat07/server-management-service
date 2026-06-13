@@ -5,9 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net"
 	"strings"
 	"time"
 
+	"server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/modules/server_management/domain"
 	"server-management-service/internal/modules/server_management/repository"
 
@@ -17,20 +20,28 @@ import (
 const maxFileSize = 2 * 1024 * 1024 // 2MB used to limit the size of the imported excel file
 const batchSize = 100               // 100 servers per batch
 
+var (
+	ErrFileTooLarge  = errors.New("file size exceeds 2MB limit")
+	ErrInvalidFormat = errors.New("invalid excel file format")
+	ErrNoSheets      = errors.New("no sheets found in the excel file")
+	ErrEmptyFile     = errors.New("empty excel file")
+	ErrMissingCols   = errors.New("missing required columns: 'Server Name' or 'IPv4'")
+)
+
 func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*ImportResult, error) {
 	if len(fileBytes) > maxFileSize {
-		return nil, errors.New("file size exceeds 2MB limit")
+		return nil, ErrFileTooLarge
 	}
 
 	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
 	if err != nil {
-		return nil, errors.New("invalid excel file format")
+		return nil, ErrInvalidFormat
 	}
 	defer f.Close()
 
 	sheetName := f.GetSheetName(0)
 	if sheetName == "" {
-		return nil, errors.New("no sheets found in the excel file")
+		return nil, ErrNoSheets
 	}
 
 	rows, err := f.Rows(sheetName)
@@ -40,7 +51,7 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 
 	// Read header
 	if !rows.Next() {
-		return nil, errors.New("empty excel file")
+		return nil, ErrEmptyFile
 	}
 	header, _ := rows.Columns()
 
@@ -48,7 +59,7 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 	for i, h := range header {
 		hLower := strings.TrimSpace(strings.ToLower(h))
 		switch hLower {
-		case "server name", "name":
+		case "server name", "server_name", "name":
 			nameIdx = i
 		case "ipv4", "ip":
 			ipIdx = i
@@ -56,7 +67,7 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 	}
 
 	if nameIdx == -1 || ipIdx == -1 {
-		return nil, errors.New("missing required columns: 'Server Name' or 'IPv4'")
+		return nil, ErrMissingCols
 	}
 
 	result := &ImportResult{}
@@ -106,6 +117,22 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 			if err := s.repo.BatchCreate(ctx, validServers); err != nil {
 				return fmt.Errorf("batch create failed: %w", err)
 			}
+
+			// Dual-Write to Redis using Pipeline
+			if s.cache != nil {
+				var cacheItems []redis.CacheUpsertItem
+				for _, srv := range validServers {
+					cacheItems = append(cacheItems, redis.CacheUpsertItem{
+						ID:         srv.ServerID,
+						IPv4:       srv.IPv4,
+						Status:     string(srv.CurrentStatus),
+						RetryCount: 0,
+					})
+				}
+				if err := s.cache.BatchUpsert(ctx, cacheItems); err != nil {
+					log.Printf("[WARNING] DB Import succeeded but Redis sync failed: %v", err)
+				}
+			}
 		}
 
 		batch = batch[:0] // clear batch
@@ -128,7 +155,8 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 		}
 
 		// simple validation before adding to batch
-		if name == "" || ipv4 == "" || len(name) > 255 {
+		ip := net.ParseIP(ipv4)
+		if name == "" || ipv4 == "" || len(name) > 255 || ip == nil || ip.To4() == nil {
 			result.FailCount++
 			result.FailedServers = append(result.FailedServers, fmt.Sprintf("%s (%s) - Invalid Format", name, ipv4))
 			continue
@@ -156,8 +184,8 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 }
 
 func (s *serverService) ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error) {
-	// Query servers from Elasticsearch
-	servers, _, err := s.searchRepo.Search(ctx, filter)
+	// Query servers from Postgres
+	servers, _, err := s.repo.Search(ctx, filter)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to fetch servers for export: %w", err)
 	}

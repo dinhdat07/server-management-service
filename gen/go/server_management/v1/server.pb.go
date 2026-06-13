@@ -481,7 +481,7 @@ func (x *ViewServersRequest) GetSortDirection() string {
 
 type ViewServersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TotalCount    int64                  `protobuf:"varint,1,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,1,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	Servers       []*Server              `protobuf:"bytes,2,rep,name=servers,proto3" json:"servers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -517,7 +517,7 @@ func (*ViewServersResponse) Descriptor() ([]byte, []int) {
 	return file_server_management_v1_server_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *ViewServersResponse) GetTotalCount() int64 {
+func (x *ViewServersResponse) GetTotalCount() int32 {
 	if x != nil {
 		return x.TotalCount
 	}
@@ -820,17 +820,19 @@ const file_server_management_v1_server_proto_rawDesc = "" +
 	"\x13DeleteServerRequest\x12%\n" +
 	"\tserver_id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\xb0\x01\x01R\bserverId\"0\n" +
 	"\x14DeleteServerResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xd8\x01\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xca\x02\n" +
 	"\x12ViewServersRequest\x12\x1b\n" +
 	"\x04page\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x04page\x12\x1f\n" +
-	"\x05limit\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01R\x05limit\x12#\n" +
-	"\rfilter_status\x18\x03 \x01(\tR\ffilterStatus\x12\x1f\n" +
+	"\x05limit\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01R\x05limit\x12=\n" +
+	"\rfilter_status\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x06ONLINER\aOFFLINER\x00R\ffilterStatus\x12\x1f\n" +
 	"\vfilter_name\x18\x04 \x01(\tR\n" +
-	"filterName\x12\x17\n" +
-	"\asort_by\x18\x05 \x01(\tR\x06sortBy\x12%\n" +
-	"\x0esort_direction\x18\x06 \x01(\tR\rsortDirection\"n\n" +
+	"filterName\x12[\n" +
+	"\asort_by\x18\x05 \x01(\tBB\xbaH?r=R\vserver_nameR\n" +
+	"created_atR\x04ipv4R\x0ecurrent_statusR\n" +
+	"updated_atR\x00R\x06sortBy\x129\n" +
+	"\x0esort_direction\x18\x06 \x01(\tB\x12\xbaH\x0fr\rR\x03ascR\x04descR\x00R\rsortDirection\"n\n" +
 	"\x13ViewServersResponse\x12\x1f\n" +
-	"\vtotal_count\x18\x01 \x01(\x03R\n" +
+	"\vtotal_count\x18\x01 \x01(\x05R\n" +
 	"totalCount\x126\n" +
 	"\aservers\x18\x02 \x03(\v2\x1c.server_management.v1.ServerR\aservers\"U\n" +
 	"\x14ImportServersRequest\x12!\n" +
@@ -841,15 +843,17 @@ const file_server_management_v1_server_proto_rawDesc = "" +
 	"\x12successful_servers\x18\x02 \x03(\tR\x11successfulServers\x12\x1d\n" +
 	"\n" +
 	"fail_count\x18\x03 \x01(\x05R\tfailCount\x12%\n" +
-	"\x0efailed_servers\x18\x04 \x03(\tR\rfailedServers\"\xd8\x01\n" +
+	"\x0efailed_servers\x18\x04 \x03(\tR\rfailedServers\"\xca\x02\n" +
 	"\x14ExportServersRequest\x12\x1b\n" +
 	"\x04page\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x04page\x12\x1d\n" +
-	"\x05limit\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x05limit\x12#\n" +
-	"\rfilter_status\x18\x03 \x01(\tR\ffilterStatus\x12\x1f\n" +
+	"\x05limit\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x05limit\x12=\n" +
+	"\rfilter_status\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x06ONLINER\aOFFLINER\x00R\ffilterStatus\x12\x1f\n" +
 	"\vfilter_name\x18\x04 \x01(\tR\n" +
-	"filterName\x12\x17\n" +
-	"\asort_by\x18\x05 \x01(\tR\x06sortBy\x12%\n" +
-	"\x0esort_direction\x18\x06 \x01(\tR\rsortDirection\"V\n" +
+	"filterName\x12[\n" +
+	"\asort_by\x18\x05 \x01(\tBB\xbaH?r=R\vserver_nameR\n" +
+	"created_atR\x04ipv4R\x0ecurrent_statusR\n" +
+	"updated_atR\x00R\x06sortBy\x129\n" +
+	"\x0esort_direction\x18\x06 \x01(\tB\x12\xbaH\x0fr\rR\x03ascR\x04descR\x00R\rsortDirection\"V\n" +
 	"\x15ExportServersResponse\x12!\n" +
 	"\ffile_content\x18\x01 \x01(\fR\vfileContent\x12\x1a\n" +
 	"\bfilename\x18\x02 \x01(\tR\bfilename2\xd0\x06\n" +

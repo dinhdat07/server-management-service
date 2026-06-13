@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
-	"server-management-service/internal/modules/monitoring/domain"
+	monitoringDomain "server-management-service/internal/modules/monitoring/domain"
+	"server-management-service/internal/modules/monitoring/repository"
+	mockRepo "server-management-service/internal/modules/monitoring/repository/mock"
 	serverDomain "server-management-service/internal/modules/server_management/domain"
 
-	"github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -19,101 +19,247 @@ type mockMonitoringRepo struct {
 	mock.Mock
 }
 
-func (m *mockMonitoringRepo) SaveTransitionAndUpdateServer(ctx context.Context, event *domain.StatusTransitionEvent, newStatus serverDomain.ServerStatus) error {
-	args := m.Called(ctx, event, newStatus)
+func (m *mockMonitoringRepo) UpdateServerStatus(ctx context.Context, serverID string, newStatus serverDomain.ServerStatus, consecutiveFailures int) error {
+	args := m.Called(ctx, serverID, newStatus, consecutiveFailures)
 	return args.Error(0)
 }
 
-type mockTxManager struct{}
-
-func (m *mockTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
-	return fn(ctx)
+type mockObservationLogger struct {
+	mock.Mock
 }
 
-func TestEvaluate_FailureThreshold(t *testing.T) {
+func (m *mockObservationLogger) LogObservation(ctx context.Context, serverID string, isSuccess bool) {
+	m.Called(ctx, serverID, isSuccess)
+}
+
+func (m *mockObservationLogger) Shutdown() {
+	m.Called()
+}
+
+func TestEvaluate_FirstFailureStaysOnline(t *testing.T) {
 	ctx := context.Background()
 	serverID := "svr-123"
-	redisKey := fmt.Sprintf("server:info:%s", serverID)
 
-	db, mockRedis := redismock.NewClientMock()
+	stateStore := mockRepo.NewMockServerStateStore(t)
 	repo := new(mockMonitoringRepo)
-	txManager := &mockTxManager{}
-	service := NewMonitoringService(repo, db, txManager)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
 
-	// Test 1: First Failure (Online -> Online)
-	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
-		"status":      "ONLINE",
-		"retry_count": "0",
-	})
-	mockRedis.ExpectHSet(redisKey, "status", "ONLINE", "retry_count", 1).SetVal(1)
+	// First Failure (Online -> Online) with threshold=2
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "ONLINE", RetryCount: 0}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "ONLINE", 1).Return(nil).Once()
+	esLogger.On("LogObservation", ctx, serverID, false).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOnline, 1).Return(nil).Once()
 
-	// Repo should NOT be called since status didn't change
 	err := service.Evaluate(ctx, serverID, "1.1.1.1", false)
 	assert.NoError(t, err)
-	assert.NoError(t, mockRedis.ExpectationsWereMet())
-	repo.AssertNotCalled(t, "SaveTransitionAndUpdateServer")
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
+	stateStore.AssertExpectations(t)
+}
 
-	// Test 2: Second Failure (Online -> Offline)
-	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
-		"status":      "ONLINE",
-		"retry_count": "1", // 1 previous failure
-	})
-	mockRedis.ExpectHSet(redisKey, "status", "OFFLINE", "retry_count", 0).SetVal(1) // final state
-	
-	repo.On("SaveTransitionAndUpdateServer", ctx, mock.AnythingOfType("*domain.StatusTransitionEvent"), serverDomain.ServerStatusOffline).Return(nil)
+func TestEvaluate_SecondFailureGoesOffline(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-123"
 
-	err = service.Evaluate(ctx, serverID, "1.1.1.1", false)
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	// Second consecutive failure crosses threshold (Online -> Offline)
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "ONLINE", RetryCount: 1}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "OFFLINE", 0).Return(nil).Once()
+	esLogger.On("LogObservation", ctx, serverID, false).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOffline, 0).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", false)
 	assert.NoError(t, err)
-	assert.NoError(t, mockRedis.ExpectationsWereMet())
-	repo.AssertCalled(t, "SaveTransitionAndUpdateServer", ctx, mock.Anything, serverDomain.ServerStatusOffline)
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
+	stateStore.AssertExpectations(t)
 }
 
 func TestEvaluate_RecoveryThreshold(t *testing.T) {
 	ctx := context.Background()
 	serverID := "svr-456"
-	redisKey := fmt.Sprintf("server:info:%s", serverID)
 
-	db, mockRedis := redismock.NewClientMock()
+	stateStore := mockRepo.NewMockServerStateStore(t)
 	repo := new(mockMonitoringRepo)
-	txManager := &mockTxManager{}
-	service := NewMonitoringService(repo, db, txManager)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
 
 	// Test: Offline -> Online (Recovery)
-	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
-		"status":      "OFFLINE",
-		"retry_count": "5", // Multiple failures in offline state
-	})
-	mockRedis.ExpectHSet(redisKey, "status", "ONLINE", "retry_count", 0).SetVal(1) // final state
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "OFFLINE", RetryCount: 5}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "ONLINE", 0).Return(nil).Once()
 
-	repo.On("SaveTransitionAndUpdateServer", ctx, mock.AnythingOfType("*domain.StatusTransitionEvent"), serverDomain.ServerStatusOnline).Return(nil)
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOnline, 0).Return(nil).Once()
 
 	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
 	assert.NoError(t, err)
-	assert.NoError(t, mockRedis.ExpectationsWereMet())
-	repo.AssertCalled(t, "SaveTransitionAndUpdateServer", ctx, mock.Anything, serverDomain.ServerStatusOnline)
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
+	stateStore.AssertExpectations(t)
 }
 
 func TestEvaluate_DBError(t *testing.T) {
 	ctx := context.Background()
 	serverID := "svr-789"
-	redisKey := fmt.Sprintf("server:info:%s", serverID)
 
-	db, mockRedis := redismock.NewClientMock()
+	stateStore := mockRepo.NewMockServerStateStore(t)
 	repo := new(mockMonitoringRepo)
-	txManager := &mockTxManager{}
-	service := NewMonitoringService(repo, db, txManager)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
 
 	// Test: Offline -> Online (Recovery) but DB fails
-	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
-		"status":      "OFFLINE",
-		"retry_count": "0",
-	})
-	mockRedis.ExpectHSet(redisKey, "status", "ONLINE", "retry_count", 0).SetVal(1)
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "OFFLINE", RetryCount: 0}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "ONLINE", 0).Return(nil).Once()
 
 	expectedErr := errors.New("db error")
-	repo.On("SaveTransitionAndUpdateServer", ctx, mock.Anything, serverDomain.ServerStatusOnline).Return(expectedErr)
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOnline, 0).Return(expectedErr).Once()
 
 	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
 	assert.ErrorIs(t, err, expectedErr)
-	assert.NoError(t, mockRedis.ExpectationsWereMet())
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
+	stateStore.AssertExpectations(t)
+}
+
+func TestEvaluate_OnlineStaysOnline(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-keep"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "ONLINE", RetryCount: 0}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "ONLINE", 0).Return(nil).Once()
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
+	assert.NoError(t, err)
+}
+
+func TestEvaluate_OfflineStaysOffline(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-off"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "OFFLINE", RetryCount: 3}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "OFFLINE", 4).Return(nil).Once()
+	esLogger.On("LogObservation", ctx, serverID, false).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", false)
+	assert.NoError(t, err)
+}
+
+func TestEvaluate_DefaultStatus(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-default"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "", RetryCount: 0}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "ONLINE", 0).Return(nil).Once()
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
+	assert.NoError(t, err)
+}
+
+func TestEvaluate_GetServerStateError(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-redis-err"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	stateStore.On("GetServerState", ctx, serverID).Return(nil, errors.New("redis timeout")).Once()
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "redis timeout")
+}
+
+func TestEvaluate_ESLogErrorNonFatal(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-es-err"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	esLogger.On("LogObservation", ctx, serverID, true).Return(errors.New("ES unavailable")).Once()
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "ONLINE", RetryCount: 0}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "ONLINE", 0).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
+	assert.NoError(t, err)
+}
+
+func TestEvaluate_RedisEmpty(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-empty"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	stateStore.On("GetServerState", ctx, serverID).Return((*monitoringDomain.ServerState)(nil), repository.ErrServerStateNotFound).Once()
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
+	assert.ErrorIs(t, err, repository.ErrServerStateNotFound)
+}
+
+func TestEvaluate_RedisHSetError(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-hset-err"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 2)
+
+	hsetErr := errors.New("redis write error")
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "ONLINE", RetryCount: 0}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "ONLINE", 0).Return(hsetErr).Once()
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
+	assert.ErrorIs(t, err, hsetErr)
+}
+
+func TestEvaluate_ThresholdOne_ImmediateOffline(t *testing.T) {
+	ctx := context.Background()
+	serverID := "svr-t1"
+
+	stateStore := mockRepo.NewMockServerStateStore(t)
+	repo := new(mockMonitoringRepo)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, stateStore, esLogger, 1)
+
+	stateStore.On("GetServerState", ctx, serverID).Return(&monitoringDomain.ServerState{Status: "ONLINE", RetryCount: 0}, nil).Once()
+	stateStore.On("SetServerState", ctx, serverID, "OFFLINE", 0).Return(nil).Once()
+	esLogger.On("LogObservation", ctx, serverID, false).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOffline, 0).Return(nil).Once()
+
+	err := service.Evaluate(ctx, serverID, "1.1.1.1", false)
+	assert.NoError(t, err)
 }
