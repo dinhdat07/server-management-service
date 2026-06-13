@@ -6,7 +6,7 @@ WORKDIR /app
 COPY cmd/simulator/entrypoint.sh .
 COPY simulator-linux /app/server-simulator
 
-RUN chmod +x entrypoint.sh server-simulator
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh server-simulator
 
 EXPOSE 8080
 

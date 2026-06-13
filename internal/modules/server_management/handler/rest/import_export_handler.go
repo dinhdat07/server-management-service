@@ -48,6 +48,9 @@ func extractBearer(r *http.Request) string {
 	if strings.HasPrefix(auth, "Bearer ") {
 		return strings.TrimPrefix(auth, "Bearer ")
 	}
+	if cookie, err := r.Cookie("access_token"); err == nil {
+		return strings.TrimSpace(cookie.Value)
+	}
 	return ""
 }
 
