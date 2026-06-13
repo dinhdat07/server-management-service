@@ -29,7 +29,7 @@ func (r *gormReportingRepository) UpdateReportStatus(ctx context.Context, reqID 
 
 func (r *gormReportingRepository) GetServerCountByStatus(ctx context.Context, status string) (int64, error) {
 	var count int64
-	query := r.db.WithContext(ctx).Table("servers")
+	query := r.db.WithContext(ctx).Table("management_schema.servers")
 	if status != "" {
 		query = query.Where("current_status = ?", status)
 	}

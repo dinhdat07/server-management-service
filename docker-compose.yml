@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: sms
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - sms_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -85,6 +85,51 @@ services:
     environment:
       SIMULATOR_IP_COUNT: "10000"
       SIMULATOR_SUBNET: "10.1"
+      SIMULATOR_AUTO_FLAP_ENABLED: "true"
+      SIMULATOR_FLAP_INTERVAL: "60s"
+      SIMULATOR_FLAP_PERCENT: "5"
+    networks:
+      - default
+
+  # ============================================
+  # Monitoring Worker — runs in Docker network so ICMP can reach simulator IPs
+  # ============================================
+  monitoring-worker:
+    build:
+      context: .
+      dockerfile: cmd/monitoring-worker/Dockerfile
+    container_name: sms_monitoring_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      simulator:
+        condition: service_started
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sms?sslmode=disable
+      REDIS_ENABLED: "true"
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_SERVER_INDEX: sms_observation_logs
+      ICMP_PRIVILEGED: "true"
+      MONITORING_FAILURE_THRESHOLD: "2"
+      MONITORING_WORKER_CONCURRENCY: "100"
+      MONITORING_WORKER_PING_TIMEOUT: 3s
+      MONITORING_WORKER_TICK_INTERVAL: 30s
+      MONITORING_WORKER_LOCK_KEY: lock:monitoring_worker
+      MONITORING_WORKER_LOCK_EXPIRATION: 25s
+      SIMULATOR_HOST: simulator
+      SIMULATOR_SUBNET: 10.1.0.0/16
+      LOG_LEVEL: info
+      LOG_FORMAT: text
     networks:
       - default
 
