@@ -10,6 +10,7 @@ monitoring-worker-linux
 bin/
 tmp/
 
+
 # Coverage output
 *.out
 cov*
