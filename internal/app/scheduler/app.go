@@ -15,6 +15,7 @@ import (
 	"server-management-service/internal/modules/reporting/service"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
+	"server-management-service/internal/shared/logger"
 )
 
 type App struct {
@@ -29,6 +30,8 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
+
+	logger.InitLogger(cfg.Logger, "daily-scheduler")
 
 	db, err := database.GetInstance(cfg.DBUrl)
 	if err != nil {

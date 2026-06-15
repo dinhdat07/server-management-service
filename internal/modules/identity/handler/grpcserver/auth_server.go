@@ -4,18 +4,42 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	authv1 "server-management-service/gen/go/auth/v1"
 	"server-management-service/internal/infrastructure/security"
 	"server-management-service/internal/shared/grpcctx"
 
 	"server-management-service/internal/modules/identity/service"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
+
+func authCookie(name, value string, maxAge int, httpOnly bool) string {
+	return (&http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     "/",
+		MaxAge:   maxAge,
+		HttpOnly: httpOnly,
+		SameSite: http.SameSiteLaxMode,
+	}).String()
+}
+
+func clearCookie(name string) string {
+	return (&http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: name != "csrf_token",
+		SameSite: http.SameSiteLaxMode,
+	}).String()
+}
 
 type AuthServer struct {
 	authv1.UnimplementedAuthServiceServer
@@ -66,16 +90,17 @@ func (s *AuthServer) Login(ctx context.Context, req *authv1.LoginRequest) (*auth
 	csrfToken, err := csrfManager.GenerateCSRFToken()
 	if err == nil {
 		_ = grpc.SetHeader(ctx, metadata.Pairs(
-			"Set-Cookie-Access-Token", result.AccessToken,
-			"Set-Cookie-Refresh-Token", result.RefreshToken,
-			"Set-Cookie-Csrf-Token", csrfToken,
+			"Set-Cookie-Access-Token", authCookie("access_token", result.AccessToken, int(result.ExpiresIn), true),
+			"Set-Cookie-Refresh-Token", authCookie("refresh_token", result.RefreshToken, 604800, true),
+			"Set-Cookie-Csrf-Token", authCookie("csrf_token", csrfToken, 86400, false),
 		))
 	}
 
 	return &authv1.LoginResponse{
-		AccessToken: result.AccessToken,
-		TokenType:   "Bearer",
-		ExpiresIn:   result.ExpiresIn,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    result.ExpiresIn,
 	}, nil
 }
 
@@ -86,9 +111,9 @@ func (s *AuthServer) Logout(ctx context.Context, req *authv1.LogoutRequest) (*au
 	}
 
 	_ = grpc.SetHeader(ctx, metadata.Pairs(
-		"Clear-Cookie", "access_token",
-		"Clear-Cookie", "refresh_token",
-		"Clear-Cookie", "csrf_token",
+		"Clear-Cookie", clearCookie("access_token"),
+		"Clear-Cookie", clearCookie("refresh_token"),
+		"Clear-Cookie", clearCookie("csrf_token"),
 	))
 
 	return &authv1.LogoutResponse{
@@ -113,16 +138,17 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authv1.RefreshReques
 	csrfToken, err := csrfManager.GenerateCSRFToken()
 	if err == nil {
 		_ = grpc.SetHeader(ctx, metadata.Pairs(
-			"Set-Cookie-Access-Token", result.AccessToken,
-			"Set-Cookie-Refresh-Token", result.RefreshToken,
-			"Set-Cookie-Csrf-Token", csrfToken,
+			"Set-Cookie-Access-Token", authCookie("access_token", result.AccessToken, int(result.ExpiresIn), true),
+			"Set-Cookie-Refresh-Token", authCookie("refresh_token", result.RefreshToken, 604800, true),
+			"Set-Cookie-Csrf-Token", authCookie("csrf_token", csrfToken, 86400, false),
 		))
 	}
 
 	return &authv1.RefreshResponse{
-		AccessToken: result.AccessToken,
-		TokenType:   "Bearer",
-		ExpiresIn:   result.ExpiresIn,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    result.ExpiresIn,
 	}, nil
 }
 
@@ -139,9 +165,9 @@ func (s *AuthServer) LogoutAll(ctx context.Context, req *authv1.LogoutAllRequest
 	}
 
 	_ = grpc.SetHeader(ctx, metadata.Pairs(
-		"Clear-Cookie", "access_token",
-		"Clear-Cookie", "refresh_token",
-		"Clear-Cookie", "csrf_token",
+		"Clear-Cookie", clearCookie("access_token"),
+		"Clear-Cookie", clearCookie("refresh_token"),
+		"Clear-Cookie", clearCookie("csrf_token"),
 	))
 
 	return &authv1.LogoutAllResponse{

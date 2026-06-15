@@ -27,5 +27,5 @@ type ServerRepository interface {
 	Delete(ctx context.Context, id string) error
 
 	BatchCreate(ctx context.Context, servers []*domain.Server) error
-	Search(ctx context.Context, filter ServerListFilter) ([]*domain.Server, int64, error)
+	Search(ctx context.Context, filter ServerListFilter) ([]*domain.Server, int32, error)
 }

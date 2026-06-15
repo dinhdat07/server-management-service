@@ -42,13 +42,13 @@ func (m *mockSvc) DeleteServer(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
-func (m *mockSvc) SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error) {
+func (m *mockSvc) SearchServers(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int32, error) {
 	args := m.Called(ctx, filter)
 	var servers []*domain.Server
 	if args.Get(0) != nil {
 		servers = args.Get(0).([]*domain.Server)
 	}
-	return servers, args.Get(1).(int64), args.Error(2)
+	return servers, args.Get(1).(int32), args.Error(2)
 }
 
 func (m *mockSvc) ImportServers(ctx context.Context, fileBytes []byte) (*service.ImportResult, error) {
@@ -175,12 +175,12 @@ func TestHandler_ViewServers_Success(t *testing.T) {
 
 	servers := []*domain.Server{{ServerID: "id-1", ServerName: "srv", IPv4: "1.1.1.1"}}
 	filter := repository.ServerListFilter{Page: 1, PageSize: 20}
-	svc.On("SearchServers", mock.Anything, filter).Return(servers, int64(1), nil).Once()
+	svc.On("SearchServers", mock.Anything, filter).Return(servers, int32(1), nil).Once()
 
 	resp, err := h.ViewServers(context.Background(), &server_managementv1.ViewServersRequest{Page: 1, Limit: 20})
 
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), resp.TotalCount)
+	assert.Equal(t, int32(1), resp.TotalCount)
 	assert.Len(t, resp.Servers, 1)
 }
 
@@ -188,7 +188,7 @@ func TestHandler_ViewServers_Error(t *testing.T) {
 	svc := new(mockSvc)
 	h := NewServerManagementServer(svc)
 
-	svc.On("SearchServers", mock.Anything, mock.Anything).Return(nil, int64(0), errors.New("db error")).Once()
+	svc.On("SearchServers", mock.Anything, mock.Anything).Return(nil, int32(0), errors.New("db error")).Once()
 
 	_, err := h.ViewServers(context.Background(), &server_managementv1.ViewServersRequest{Page: 1, Limit: 20})
 
@@ -226,7 +226,7 @@ func TestHandler_NilRequests(t *testing.T) {
 
 	_, err := h.CreateServer(ctx, nil)
 	assert.Error(t, err)
-	
+
 	_, err = h.UpdateServer(ctx, nil)
 	assert.Error(t, err)
 
@@ -264,19 +264,19 @@ func TestHandler_ImportServers_Errors(t *testing.T) {
 
 	svc.On("ImportServers", mock.Anything, []byte("size")).
 		Return(nil, service.ErrFileTooLarge).Once()
-		
+
 	_, err := h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("size")})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 
 	svc.On("ImportServers", mock.Anything, []byte("format")).
 		Return(nil, service.ErrInvalidFormat).Once()
-		
+
 	_, err = h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("format")})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 
 	svc.On("ImportServers", mock.Anything, []byte("other")).
 		Return(nil, errors.New("internal db error")).Once()
-		
+
 	_, err = h.ImportServers(context.Background(), &server_managementv1.ImportServersRequest{FileContent: []byte("other")})
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
@@ -307,6 +307,3 @@ func TestHandler_ExportServers_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
-
-
-

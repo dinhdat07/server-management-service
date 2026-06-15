@@ -112,7 +112,7 @@ func (r *GormServerRepository) BatchCreate(ctx context.Context, servers []*domai
 	return r.getDB(ctx).Create(&servers).Error
 }
 
-func (r *GormServerRepository) Search(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int64, error) {
+func (r *GormServerRepository) Search(ctx context.Context, filter repository.ServerListFilter) ([]*domain.Server, int32, error) {
 	query := r.getDB(ctx).Model(&domain.Server{})
 
 	if filter.Status != "" {
@@ -145,5 +145,5 @@ func (r *GormServerRepository) Search(ctx context.Context, filter repository.Ser
 		return nil, 0, err
 	}
 
-	return servers, total, nil
+	return servers, int32(total), nil
 }
