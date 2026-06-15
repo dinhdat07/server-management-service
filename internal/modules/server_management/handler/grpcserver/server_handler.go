@@ -116,11 +116,18 @@ func (s *ServerManagementServer) ViewServers(ctx context.Context, req *server_ma
 		return nil, gstatus.Error(codes.InvalidArgument, "request is required")
 	}
 
+	createdFrom, createdTo, err := parseCreatedDateRange(req.GetCreatedFrom(), req.GetCreatedTo())
+	if err != nil {
+		return nil, err
+	}
+
 	filter := repository.ServerListFilter{
 		Page:          int(req.GetPage()),
 		PageSize:      int(req.GetLimit()),
 		Status:        req.GetFilterStatus(),
 		Name:          req.GetFilterName(),
+		CreatedFrom:   createdFrom,
+		CreatedTo:     createdTo,
 		SortBy:        req.GetSortBy(),
 		SortDirection: req.GetSortDirection(),
 	}
@@ -164,11 +171,18 @@ func (s *ServerManagementServer) ExportServers(ctx context.Context, req *server_
 		return nil, gstatus.Error(codes.InvalidArgument, "request is required")
 	}
 
+	createdFrom, createdTo, err := parseCreatedDateRange(req.GetCreatedFrom(), req.GetCreatedTo())
+	if err != nil {
+		return nil, err
+	}
+
 	filter := repository.ServerListFilter{
 		Page:          int(req.GetPage()),
 		PageSize:      int(req.GetLimit()),
 		Status:        req.GetFilterStatus(),
 		Name:          req.GetFilterName(),
+		CreatedFrom:   createdFrom,
+		CreatedTo:     createdTo,
 		SortBy:        req.GetSortBy(),
 		SortDirection: req.GetSortDirection(),
 	}
@@ -182,4 +196,27 @@ func (s *ServerManagementServer) ExportServers(ctx context.Context, req *server_
 		FileContent: fileBytes,
 		Filename:    filename,
 	}, nil
+}
+
+func parseCreatedDateRange(createdFrom, createdTo string) (time.Time, time.Time, error) {
+	var from time.Time
+	var to time.Time
+	var err error
+	if createdFrom != "" {
+		from, err = time.Parse("2006-01-02", createdFrom)
+		if err != nil {
+			return time.Time{}, time.Time{}, gstatus.Error(codes.InvalidArgument, "created_from must use YYYY-MM-DD format")
+		}
+	}
+	if createdTo != "" {
+		to, err = time.Parse("2006-01-02", createdTo)
+		if err != nil {
+			return time.Time{}, time.Time{}, gstatus.Error(codes.InvalidArgument, "created_to must use YYYY-MM-DD format")
+		}
+		to = to.AddDate(0, 0, 1)
+	}
+	if !from.IsZero() && !to.IsZero() && !from.Before(to) {
+		return time.Time{}, time.Time{}, gstatus.Error(codes.InvalidArgument, "created_from must be before or equal to created_to")
+	}
+	return from, to, nil
 }

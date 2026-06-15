@@ -19,10 +19,14 @@ var statusReportTemplate string
 type TemplateData struct {
 	StartDate      string
 	EndDate        string
+	PeriodDays     int
 	TotalServers   int64
 	OnlineServers  int64
 	OfflineServers int64
 	UptimePercent  float64
+	OnlinePercent  float64
+	OfflinePercent float64
+	HealthLabel    string
 }
 
 type ReportingWorker interface {
@@ -139,10 +143,14 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 	data := TemplateData{
 		StartDate:      req.StartTime.Format("2006-01-02"),
 		EndDate:        req.EndTime.Format("2006-01-02"),
+		PeriodDays:     int(req.EndTime.Sub(req.StartTime).Hours()/24) + 1,
 		TotalServers:   totalServers,
 		OnlineServers:  onlineServers,
 		OfflineServers: offlineServers,
 		UptimePercent:  uptimePercent,
+		OnlinePercent:  percentage(onlineServers, totalServers),
+		OfflinePercent: percentage(offlineServers, totalServers),
+		HealthLabel:    healthLabel(uptimePercent),
 	}
 
 	var buf bytes.Buffer
@@ -163,4 +171,22 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 	}
 
 	return nil
+}
+
+func percentage(value, total int64) float64 {
+	if total <= 0 {
+		return 0
+	}
+	return float64(value) * 100 / float64(total)
+}
+
+func healthLabel(uptime float64) string {
+	switch {
+	case uptime >= 99:
+		return "Healthy"
+	case uptime >= 95:
+		return "Attention Recommended"
+	default:
+		return "Action Required"
+	}
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"server-management-service/internal/modules/server_management/domain"
 )
@@ -11,6 +12,8 @@ type ServerListFilter struct {
 	PageSize      int
 	Status        string
 	Name          string
+	CreatedFrom   time.Time
+	CreatedTo     time.Time
 	SortBy        string
 	SortDirection string // "asc" or "desc"
 }
