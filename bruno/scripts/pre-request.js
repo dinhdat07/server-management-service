@@ -1,9 +1,3 @@
-// Auto-inject Bearer token for all requests
-const token = bru.getVar("accessToken");
-if (token) {
-  req.setHeader("Authorization", "Bearer " + token);
-}
-
 // Auto-inject CSRF token for mutation requests
 const csrfToken = bru.getVar("csrfToken");
 if (csrfToken) {

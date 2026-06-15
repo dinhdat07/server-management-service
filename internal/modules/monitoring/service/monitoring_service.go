@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"server-management-service/internal/infrastructure/elasticsearch"
 	"server-management-service/internal/modules/monitoring/repository"
@@ -31,12 +30,8 @@ func NewMonitoringService(repo repository.MonitoringRepository, stateStore repos
 }
 
 func (s *monitoringServiceImpl) Evaluate(ctx context.Context, serverID string, ip string, pingSuccess bool) error {
-	// Log observation directly to Elasticsearch (Time-Series)
-	err := s.esLogger.LogObservation(ctx, serverID, pingSuccess)
-	if err != nil {
-		// Log the error, not fail the rest of the evaluation
-		log.Printf("[WARNING] failed to log observation to ES for server %s: %v", serverID, err)
-	}
+	// Fire-and-forget: buffered, non-blocking, flushed in bulk
+	s.esLogger.LogObservation(ctx, serverID, pingSuccess)
 
 	// Fetch current status and retry count from state store (Redis)
 	state, err := s.stateStore.GetServerState(ctx, serverID)

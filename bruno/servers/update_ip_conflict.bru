@@ -1,23 +1,25 @@
 meta {
   name: Update Server - IP Conflict (409)
   type: http
-  seq: 28
+  seq: 29
 }
 
 put {
   auth: bearer
-  url: {{baseURL}}/api/v1/servers/{{createdServerId}}
-  body: json}
+  url: {{baseURL}}/api/v1/servers/{{conflictServerId}}
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
 
 auth:bearer {
   token: {{accessToken}}
 }
 
 body:json {
-  {
-    "serverName": "{{createdServerName}}-v2",
-    "ipv4": "{{testServerIPv4}}"
-  }
+  {"serverName":"conflict-renamed","ipv4":"{{testServerIPv4Alt}}"}
 }
 
 assert {

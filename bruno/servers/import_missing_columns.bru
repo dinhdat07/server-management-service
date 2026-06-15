@@ -1,10 +1,11 @@
 meta {
   name: Import Servers - Missing Columns (400)
   type: http
-  seq: 36
+  seq: 37
 }
 
 post {
+  auth: bearer
   url: {{baseURL}}/api/v1/servers/import
   body: multipartForm
 }

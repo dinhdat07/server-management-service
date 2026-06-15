@@ -6,6 +6,8 @@ docs/superpowers
 # Build artifacts
 *.exe
 *.test
+simulator-linux
+monitoring-worker-linux
 bin/
 tmp/
 
@@ -17,6 +19,7 @@ coverage*
 
 # Logs
 logs/
+.codex-run/
 
 # OS
 .DS_Store

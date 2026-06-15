@@ -87,14 +87,20 @@ message DeleteServerResponse {
 message ViewServersRequest {
   int32 page = 1 [(buf.validate.field).int32.gte = 1];
   int32 limit = 2 [(buf.validate.field).int32.gte = 1, (buf.validate.field).int32.lte = 100];
-  string filter_status = 3;
+  string filter_status = 3 [(buf.validate.field).string = {
+    in: ["ONLINE", "OFFLINE", ""]
+  }];
   string filter_name = 4;
-  string sort_by = 5;
-  string sort_direction = 6;
+  string sort_by = 5 [(buf.validate.field).string = {
+    in: ["server_name", "created_at", "ipv4", "current_status", "updated_at", ""]
+  }];
+  string sort_direction = 6 [(buf.validate.field).string = {
+    in: ["asc", "desc", ""]
+  }];
 }
 
 message ViewServersResponse {
-  int64 total_count = 1;
+  int32 total_count = 1;
   repeated Server servers = 2;
 }
 
@@ -113,10 +119,16 @@ message ImportServersResponse {
 message ExportServersRequest {
   int32 page = 1 [(buf.validate.field).int32.gte = 1];
   int32 limit = 2 [(buf.validate.field).int32.gte = 1];
-  string filter_status = 3;
+  string filter_status = 3 [(buf.validate.field).string = {
+    in: ["ONLINE", "OFFLINE", ""]
+  }];
   string filter_name = 4;
-  string sort_by = 5;
-  string sort_direction = 6;
+  string sort_by = 5 [(buf.validate.field).string = {
+    in: ["server_name", "created_at", "ipv4", "current_status", "updated_at", ""]
+  }];
+  string sort_direction = 6 [(buf.validate.field).string = {
+    in: ["asc", "desc", ""]
+  }];
 }
 
 message ExportServersResponse {

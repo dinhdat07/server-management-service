@@ -28,9 +28,12 @@ type mockObservationLogger struct {
 	mock.Mock
 }
 
-func (m *mockObservationLogger) LogObservation(ctx context.Context, serverID string, isSuccess bool) error {
-	args := m.Called(ctx, serverID, isSuccess)
-	return args.Error(0)
+func (m *mockObservationLogger) LogObservation(ctx context.Context, serverID string, isSuccess bool) {
+	m.Called(ctx, serverID, isSuccess)
+}
+
+func (m *mockObservationLogger) Shutdown() {
+	m.Called()
 }
 
 func TestEvaluate_FirstFailureStaysOnline(t *testing.T) {

@@ -173,7 +173,7 @@ func TestGormServerRepository_Search(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.Len(t, servers, 1)
-		assert.Equal(t, int64(10), total)
+		assert.Equal(t, int32(10), total)
 	})
 }
 

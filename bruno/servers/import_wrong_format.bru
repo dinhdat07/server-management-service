@@ -5,6 +5,7 @@ meta {
 }
 
 post {
+  auth: bearer
   url: {{baseURL}}/api/v1/servers/import
   body: multipartForm
 }

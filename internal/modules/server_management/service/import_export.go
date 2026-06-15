@@ -59,7 +59,7 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 	for i, h := range header {
 		hLower := strings.TrimSpace(strings.ToLower(h))
 		switch hLower {
-		case "server name", "name":
+		case "server name", "server_name", "name":
 			nameIdx = i
 		case "ipv4", "ip":
 			ipIdx = i
