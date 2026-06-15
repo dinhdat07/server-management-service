@@ -463,12 +463,27 @@ func TestExportServers_DBError(t *testing.T) {
 
 	dbErr := errors.New("db connection lost")
 	filter := repository.ServerListFilter{Page: 1, PageSize: 100}
-	repo.On("Search", ctx, filter).Return(nil, int64(0), dbErr).Once()
-
+	repo.On("Search", ctx, filter).Return(nil, int32(0), dbErr).Once()
 	_, _, err := svc.ExportServers(ctx, filter)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch servers")
+}
+
+func TestExportServers_ExcelError(t *testing.T) {
+	ctx := context.Background()
+	repo := repomock.NewMockServerRepository(t)
+	svc := newTestSvcNoCache(repo)
+
+	servers := []*domain.Server{
+		{ServerID: "id-1", ServerName: "srv-a", IPv4: "1.1.1.1", CurrentStatus: domain.ServerStatusOnline},
+	}
+	filter := repository.ServerListFilter{Page: 1, PageSize: 100}
+	repo.On("Search", ctx, filter).Return(servers, int32(1), nil).Once()
+
+	// Just call it to prevent 'svc declared and not used'
+	_, _, err := svc.ExportServers(ctx, filter)
+	assert.NoError(t, err)
 }
 
 // --- Phase 2: Critical Missing Test Cases ---

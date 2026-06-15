@@ -20,6 +20,15 @@ func TestNewReportRequest(t *testing.T) {
 	assert.NotEqual(t, "", req.ID.String())
 }
 
+func TestNewReportRequest_Invalid(t *testing.T) {
+	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 6, 2, 0, 0, 0, 0, time.UTC)
+
+	// empty email
+	_, err := NewReportRequest("", start, end, "corr-123")
+	assert.Error(t, err)
+}
+
 func TestReportRequest_TableName(t *testing.T) {
 	r := &ReportRequest{}
 	assert.Equal(t, "reporting_schema.report_requests", r.TableName())
