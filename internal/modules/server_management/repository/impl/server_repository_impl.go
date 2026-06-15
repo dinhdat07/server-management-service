@@ -119,7 +119,14 @@ func (r *GormServerRepository) Search(ctx context.Context, filter repository.Ser
 		query = query.Where("current_status = ?", filter.Status)
 	}
 	if filter.Name != "" {
-		query = query.Where("server_name ILIKE ?", "%"+filter.Name+"%")
+		term := "%" + strings.TrimSpace(filter.Name) + "%"
+		query = query.Where("server_name ILIKE ? OR ipv4 ILIKE ?", term, term)
+	}
+	if !filter.CreatedFrom.IsZero() {
+		query = query.Where("created_at >= ?", filter.CreatedFrom)
+	}
+	if !filter.CreatedTo.IsZero() {
+		query = query.Where("created_at < ?", filter.CreatedTo)
 	}
 
 	var total int64

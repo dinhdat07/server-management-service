@@ -155,12 +155,12 @@ func TestGormServerRepository_Search(t *testing.T) {
 	repo := NewGormServerRepository(db)
 
 	t.Run("success with filters", func(t *testing.T) {
-		mock.ExpectQuery(`SELECT count.*FROM .*servers.* WHERE current_status = \$1 AND server_name ILIKE \$2`).
+		mock.ExpectQuery(`SELECT count.*FROM .*servers.* WHERE current_status = \$1 AND \(server_name ILIKE \$2 OR ipv4 ILIKE \$3\)`).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
 
 		rows := sqlmock.NewRows([]string{"server_id", "server_name", "ipv4"}).
 			AddRow("srv-1", "Test Server", "10.0.0.1")
-		mock.ExpectQuery(`SELECT \* FROM .*servers.* WHERE current_status = \$1 AND server_name ILIKE \$2 ORDER BY server_name desc LIMIT .*`).
+		mock.ExpectQuery(`SELECT \* FROM .*servers.* WHERE current_status = \$1 AND \(server_name ILIKE \$2 OR ipv4 ILIKE \$3\) ORDER BY server_name desc LIMIT .*`).
 			WillReturnRows(rows)
 
 		servers, total, err := repo.Search(context.Background(), repository.ServerListFilter{
