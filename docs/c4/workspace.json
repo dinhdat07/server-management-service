@@ -3,7 +3,7 @@
   "description" : "Modular Architecture documentation for SMS using C4 model.",
   "documentation" : { },
   "id" : 1,
-  "lastModifiedDate" : "2026-06-15T11:22:41Z",
+  "lastModifiedDate" : "2026-06-15T16:06:40Z",
   "model" : {
     "people" : [ {
       "description" : "Manages servers, views reports, and receives notifications.",
@@ -15,13 +15,13 @@
       "relationships" : [ {
         "description" : "Uses",
         "destinationId" : "4",
-        "id" : "41",
+        "id" : "46",
         "sourceId" : "1",
         "tags" : "Relationship"
       }, {
         "description" : "Visits [HTTPS]",
         "destinationId" : "5",
-        "id" : "44",
+        "id" : "49",
         "sourceId" : "1",
         "tags" : "Relationship"
       } ],
@@ -57,43 +57,43 @@
         "relationships" : [ {
           "description" : "Makes API calls to [JSON/gRPC]",
           "destinationId" : "9",
-          "id" : "45",
+          "id" : "50",
           "sourceId" : "5",
           "tags" : "Relationship"
         }, {
           "description" : "Login, Logout & Verify Token",
           "destinationId" : "10",
-          "id" : "57",
+          "id" : "62",
           "sourceId" : "5",
           "tags" : "Relationship"
         }, {
-          "description" : "CRUD & Import",
+          "description" : "CRUD & Import/Export",
           "destinationId" : "11",
-          "id" : "60",
+          "id" : "65",
           "sourceId" : "5",
           "tags" : "Relationship"
         }, {
           "description" : "gRPC requests",
           "destinationId" : "12",
-          "id" : "62",
+          "id" : "68",
           "sourceId" : "5",
           "tags" : "Relationship"
         }, {
           "description" : "REST & gRPC Calls",
           "destinationId" : "14",
-          "id" : "74",
+          "id" : "80",
           "sourceId" : "5",
           "tags" : "Relationship"
         }, {
           "description" : "REST & gRPC Calls",
           "destinationId" : "19",
-          "id" : "83",
+          "id" : "89",
           "sourceId" : "5",
           "tags" : "Relationship"
         }, {
           "description" : "gRPC Calls",
-          "destinationId" : "22",
-          "id" : "87",
+          "destinationId" : "23",
+          "id" : "95",
           "sourceId" : "5",
           "tags" : "Relationship"
         } ],
@@ -110,7 +110,7 @@
         "tags" : "Element,Container,Database",
         "technology" : "PostgreSQL 15"
       }, {
-        "description" : "Stores sessions and distributed locks.",
+        "description" : "Caches server state, sessions, distributed locks, and rate-limit counters.",
         "documentation" : { },
         "id" : "7",
         "name" : "Cache & Lock",
@@ -120,7 +120,7 @@
         "tags" : "Element,Container,Database",
         "technology" : "Redis 7"
       }, {
-        "description" : "Stores time-series ping logs and metrics.",
+        "description" : "Stores time-series ping observation logs for uptime calculation.",
         "documentation" : { },
         "id" : "8",
         "name" : "Log Storage",
@@ -141,13 +141,13 @@
           "relationships" : [ {
             "description" : "Queries/Updates users & sessions",
             "destinationId" : "6",
-            "id" : "58",
+            "id" : "63",
             "sourceId" : "10",
             "tags" : "Relationship"
           }, {
             "description" : "Reads/Writes Revoked Sessions",
             "destinationId" : "7",
-            "id" : "59",
+            "id" : "64",
             "sourceId" : "10",
             "tags" : "Relationship"
           } ],
@@ -164,14 +164,20 @@
           "relationships" : [ {
             "description" : "Queries servers",
             "destinationId" : "6",
-            "id" : "61",
+            "id" : "66",
+            "sourceId" : "11",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Dual-Write Server State Cache",
+            "destinationId" : "7",
+            "id" : "67",
             "sourceId" : "11",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
           "technology" : "Go Module"
         }, {
-          "description" : "Generates PDF/Excel reports and serves them.",
+          "description" : "Generates HTML uptime reports asynchronously and sends via email.",
           "documentation" : { },
           "id" : "12",
           "name" : "Reporting Component",
@@ -181,19 +187,19 @@
           "relationships" : [ {
             "description" : "Queries data",
             "destinationId" : "6",
-            "id" : "63",
+            "id" : "69",
             "sourceId" : "12",
             "tags" : "Relationship"
           }, {
             "description" : "Queries uptime logs",
             "destinationId" : "8",
-            "id" : "64",
+            "id" : "70",
             "sourceId" : "12",
             "tags" : "Relationship"
           }, {
             "description" : "Triggers email sending",
             "destinationId" : "13",
-            "id" : "65",
+            "id" : "71",
             "sourceId" : "12",
             "tags" : "Relationship"
           } ],
@@ -210,7 +216,7 @@
           "relationships" : [ {
             "description" : "Sends email to",
             "destinationId" : "2",
-            "id" : "69",
+            "id" : "75",
             "sourceId" : "13",
             "tags" : "Relationship"
           } ],
@@ -228,7 +234,7 @@
           "relationships" : [ {
             "description" : "Delegates business logic to",
             "destinationId" : "15",
-            "id" : "75",
+            "id" : "81",
             "sourceId" : "14",
             "tags" : "Relationship"
           } ],
@@ -246,25 +252,25 @@
           "relationships" : [ {
             "description" : "Reads/Writes Users",
             "destinationId" : "16",
-            "id" : "76",
+            "id" : "82",
             "sourceId" : "15",
             "tags" : "Relationship"
           }, {
             "description" : "Reads/Writes Sessions",
             "destinationId" : "17",
-            "id" : "77",
+            "id" : "83",
             "sourceId" : "15",
             "tags" : "Relationship"
           }, {
             "description" : "Reads/Writes Refresh Tokens",
             "destinationId" : "18",
-            "id" : "78",
+            "id" : "84",
             "sourceId" : "15",
             "tags" : "Relationship"
           }, {
             "description" : "Reads/Writes Revoked Sessions",
             "destinationId" : "7",
-            "id" : "82",
+            "id" : "88",
             "sourceId" : "15",
             "tags" : "Relationship"
           } ],
@@ -282,7 +288,7 @@
           "relationships" : [ {
             "description" : "Executes SQL",
             "destinationId" : "6",
-            "id" : "79",
+            "id" : "85",
             "sourceId" : "16",
             "tags" : "Relationship"
           } ],
@@ -300,7 +306,7 @@
           "relationships" : [ {
             "description" : "Executes SQL",
             "destinationId" : "6",
-            "id" : "80",
+            "id" : "86",
             "sourceId" : "17",
             "tags" : "Relationship"
           } ],
@@ -318,7 +324,7 @@
           "relationships" : [ {
             "description" : "Executes SQL",
             "destinationId" : "6",
-            "id" : "81",
+            "id" : "87",
             "sourceId" : "18",
             "tags" : "Relationship"
           } ],
@@ -336,14 +342,14 @@
           "relationships" : [ {
             "description" : "Delegates business logic to",
             "destinationId" : "20",
-            "id" : "84",
+            "id" : "90",
             "sourceId" : "19",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
           "technology" : "Go"
         }, {
-          "description" : "Handles Business Logic & Excel Parsing",
+          "description" : "Handles Business Logic, Excel Parsing & Redis Dual-Write",
           "documentation" : { },
           "group" : "Server Management Module (Code Level)",
           "id" : "20",
@@ -354,7 +360,13 @@
           "relationships" : [ {
             "description" : "Reads/Writes Servers",
             "destinationId" : "21",
-            "id" : "85",
+            "id" : "91",
+            "sourceId" : "20",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Dual-Write Server State",
+            "destinationId" : "22",
+            "id" : "92",
             "sourceId" : "20",
             "tags" : "Relationship"
           } ],
@@ -372,8 +384,26 @@
           "relationships" : [ {
             "description" : "Executes SQL",
             "destinationId" : "6",
-            "id" : "86",
+            "id" : "93",
             "sourceId" : "21",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Go"
+        }, {
+          "description" : "Redis Dual-Write for Server State",
+          "documentation" : { },
+          "group" : "Server Management Module (Code Level)",
+          "id" : "22",
+          "name" : "Server Cache",
+          "properties" : {
+            "structurizr.dsl.identifier" : "serverCache"
+          },
+          "relationships" : [ {
+            "description" : "HSET/SADD/DEL Server Info",
+            "destinationId" : "7",
+            "id" : "94",
+            "sourceId" : "22",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -382,16 +412,16 @@
           "description" : "Provides gRPC/REST Endpoints",
           "documentation" : { },
           "group" : "Reporting Module (Code Level)",
-          "id" : "22",
+          "id" : "23",
           "name" : "Reporting Handler",
           "properties" : {
             "structurizr.dsl.identifier" : "reportingHandler"
           },
           "relationships" : [ {
             "description" : "Delegates business logic to",
-            "destinationId" : "23",
-            "id" : "88",
-            "sourceId" : "22",
+            "destinationId" : "24",
+            "id" : "96",
+            "sourceId" : "23",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -400,28 +430,52 @@
           "description" : "Handles Business Logic",
           "documentation" : { },
           "group" : "Reporting Module (Code Level)",
-          "id" : "23",
+          "id" : "24",
           "name" : "Reporting Service",
           "properties" : {
             "structurizr.dsl.identifier" : "reportingService"
           },
           "relationships" : [ {
-            "description" : "Reads Server Metadata",
-            "destinationId" : "24",
-            "id" : "89",
-            "sourceId" : "23",
+            "description" : "Creates Report Requests",
+            "destinationId" : "26",
+            "id" : "97",
+            "sourceId" : "24",
             "tags" : "Relationship"
           }, {
-            "description" : "Queries Uptime Stats",
-            "destinationId" : "8",
-            "id" : "91",
-            "sourceId" : "23",
+            "description" : "Enqueues async report job",
+            "destinationId" : "25",
+            "id" : "98",
+            "sourceId" : "24",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Go"
+        }, {
+          "description" : "Async Goroutine Pool for Report Generation",
+          "documentation" : { },
+          "group" : "Reporting Module (Code Level)",
+          "id" : "25",
+          "name" : "Reporting Worker",
+          "properties" : {
+            "structurizr.dsl.identifier" : "reportingWorker"
+          },
+          "relationships" : [ {
+            "description" : "Reads Server Metadata & Updates Status",
+            "destinationId" : "26",
+            "id" : "99",
+            "sourceId" : "25",
+            "tags" : "Relationship"
+          }, {
+            "description" : "Calculates Uptime",
+            "destinationId" : "27",
+            "id" : "100",
+            "sourceId" : "25",
             "tags" : "Relationship"
           }, {
             "description" : "Triggers Email Rendering",
-            "destinationId" : "25",
-            "id" : "92",
-            "sourceId" : "23",
+            "destinationId" : "28",
+            "id" : "103",
+            "sourceId" : "25",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -430,7 +484,7 @@
           "description" : "Postgres Data Access",
           "documentation" : { },
           "group" : "Reporting Module (Code Level)",
-          "id" : "24",
+          "id" : "26",
           "name" : "Reporting Repository",
           "properties" : {
             "structurizr.dsl.identifier" : "reportingRepo"
@@ -438,8 +492,26 @@
           "relationships" : [ {
             "description" : "Executes SQL",
             "destinationId" : "6",
-            "id" : "90",
-            "sourceId" : "24",
+            "id" : "102",
+            "sourceId" : "26",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Go"
+        }, {
+          "description" : "Calculates uptime from Elasticsearch",
+          "documentation" : { },
+          "group" : "Reporting Module (Code Level)",
+          "id" : "27",
+          "name" : "ES Uptime Calculator",
+          "properties" : {
+            "structurizr.dsl.identifier" : "esUptimeCalcBackend"
+          },
+          "relationships" : [ {
+            "description" : "Queries Observation Logs",
+            "destinationId" : "8",
+            "id" : "101",
+            "sourceId" : "27",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -448,16 +520,16 @@
           "description" : "Handles email rendering",
           "documentation" : { },
           "group" : "Notification Module (Code Level)",
-          "id" : "25",
+          "id" : "28",
           "name" : "Notification Service",
           "properties" : {
             "structurizr.dsl.identifier" : "notificationService"
           },
           "relationships" : [ {
             "description" : "Delegates Email Sending",
-            "destinationId" : "26",
-            "id" : "93",
-            "sourceId" : "25",
+            "destinationId" : "29",
+            "id" : "104",
+            "sourceId" : "28",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -466,7 +538,7 @@
           "description" : "Sends emails",
           "documentation" : { },
           "group" : "Notification Module (Code Level)",
-          "id" : "26",
+          "id" : "29",
           "name" : "SMTP Client",
           "properties" : {
             "structurizr.dsl.identifier" : "smtpClient"
@@ -474,8 +546,8 @@
           "relationships" : [ {
             "description" : "Sends Email Protocol",
             "destinationId" : "2",
-            "id" : "94",
-            "sourceId" : "26",
+            "id" : "105",
+            "sourceId" : "29",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -491,25 +563,25 @@
         "relationships" : [ {
           "description" : "Sends notifications via",
           "destinationId" : "2",
-          "id" : "53",
+          "id" : "58",
           "sourceId" : "9",
           "tags" : "Relationship"
         }, {
           "description" : "Reads/Writes",
           "destinationId" : "6",
-          "id" : "54",
+          "id" : "59",
           "sourceId" : "9",
           "tags" : "Relationship"
         }, {
-          "description" : "Reads/Writes",
+          "description" : "Reads/Writes (Sessions, Server Cache, Rate Limit)",
           "destinationId" : "7",
-          "id" : "55",
+          "id" : "60",
           "sourceId" : "9",
           "tags" : "Relationship"
         }, {
           "description" : "Reads uptime logs from",
           "destinationId" : "8",
-          "id" : "56",
+          "id" : "61",
           "sourceId" : "9",
           "tags" : "Relationship"
         } ],
@@ -519,34 +591,34 @@
         "components" : [ {
           "description" : "Runs continuous ping loops and stores logs.",
           "documentation" : { },
-          "id" : "28",
+          "id" : "31",
           "name" : "Monitoring Component",
           "properties" : {
             "structurizr.dsl.identifier" : "monitoringComp"
           },
           "relationships" : [ {
-            "description" : "Fetches target IPs",
+            "description" : "Fetches target IPs & acquires distributed lock",
             "destinationId" : "7",
-            "id" : "70",
-            "sourceId" : "28",
+            "id" : "76",
+            "sourceId" : "31",
             "tags" : "Relationship"
           }, {
             "description" : "ICMP Ping",
             "destinationId" : "3",
-            "id" : "71",
-            "sourceId" : "28",
+            "id" : "77",
+            "sourceId" : "31",
             "tags" : "Relationship"
           }, {
-            "description" : "Saves ping logs",
+            "description" : "Saves observation logs (buffered bulk)",
             "destinationId" : "8",
-            "id" : "72",
-            "sourceId" : "28",
+            "id" : "78",
+            "sourceId" : "31",
             "tags" : "Relationship"
           }, {
-            "description" : "Updates server status",
+            "description" : "Updates server status (only on state change)",
             "destinationId" : "6",
-            "id" : "73",
-            "sourceId" : "28",
+            "id" : "79",
+            "sourceId" : "31",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -555,58 +627,76 @@
           "description" : "Manages goroutines for pinging",
           "documentation" : { },
           "group" : "Monitoring Module (Code Level)",
-          "id" : "29",
+          "id" : "32",
           "name" : "Monitoring Worker Pool",
           "properties" : {
             "structurizr.dsl.identifier" : "monitoringWorkerPool"
           },
           "relationships" : [ {
-            "description" : "Fetches Target Server IDs",
+            "description" : "Acquires Distributed Lock & Fetches Target Server IDs",
             "destinationId" : "7",
-            "id" : "95",
-            "sourceId" : "29",
+            "id" : "106",
+            "sourceId" : "32",
             "tags" : "Relationship"
           }, {
-            "description" : "Delegates Evaluation",
-            "destinationId" : "30",
-            "id" : "96",
-            "sourceId" : "29",
+            "description" : "Delegates ICMP Ping",
+            "destinationId" : "33",
+            "id" : "107",
+            "sourceId" : "32",
             "tags" : "Relationship"
           }, {
-            "description" : "Sends ICMP Ping",
-            "destinationId" : "3",
-            "id" : "97",
-            "sourceId" : "29",
+            "description" : "Delegates State Evaluation",
+            "destinationId" : "34",
+            "id" : "109",
+            "sourceId" : "32",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
           "technology" : "Go"
         }, {
-          "description" : "Evaluates ping results",
+          "description" : "Sends ICMP ping to target servers via pro-bing",
           "documentation" : { },
           "group" : "Monitoring Module (Code Level)",
-          "id" : "30",
+          "id" : "33",
+          "name" : "ICMP Pinger",
+          "properties" : {
+            "structurizr.dsl.identifier" : "icmpPinger"
+          },
+          "relationships" : [ {
+            "description" : "Sends ICMP Ping",
+            "destinationId" : "3",
+            "id" : "108",
+            "sourceId" : "33",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Go"
+        }, {
+          "description" : "Evaluates ping results using State Machine (FSM)",
+          "documentation" : { },
+          "group" : "Monitoring Module (Code Level)",
+          "id" : "34",
           "name" : "Monitoring Service",
           "properties" : {
             "structurizr.dsl.identifier" : "monitoringService"
           },
           "relationships" : [ {
-            "description" : "Reads/Writes State",
-            "destinationId" : "32",
-            "id" : "98",
-            "sourceId" : "30",
+            "description" : "Reads/Writes Server State",
+            "destinationId" : "36",
+            "id" : "110",
+            "sourceId" : "34",
             "tags" : "Relationship"
           }, {
-            "description" : "Writes Server Status",
-            "destinationId" : "31",
-            "id" : "100",
-            "sourceId" : "30",
+            "description" : "Writes Server Status (only on state change)",
+            "destinationId" : "35",
+            "id" : "112",
+            "sourceId" : "34",
             "tags" : "Relationship"
           }, {
-            "description" : "Writes Ping Logs",
-            "destinationId" : "8",
-            "id" : "102",
-            "sourceId" : "30",
+            "description" : "Fire-and-forget observation log",
+            "destinationId" : "37",
+            "id" : "114",
+            "sourceId" : "34",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -615,7 +705,7 @@
           "description" : "Postgres Data Access",
           "documentation" : { },
           "group" : "Monitoring Module (Code Level)",
-          "id" : "31",
+          "id" : "35",
           "name" : "Monitoring Repository",
           "properties" : {
             "structurizr.dsl.identifier" : "monitoringRepo"
@@ -623,8 +713,8 @@
           "relationships" : [ {
             "description" : "Executes SQL",
             "destinationId" : "6",
-            "id" : "101",
-            "sourceId" : "31",
+            "id" : "113",
+            "sourceId" : "35",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -633,16 +723,34 @@
           "description" : "Redis Data Access",
           "documentation" : { },
           "group" : "Monitoring Module (Code Level)",
-          "id" : "32",
+          "id" : "36",
           "name" : "Server State Store",
           "properties" : {
             "structurizr.dsl.identifier" : "serverStateStore"
           },
           "relationships" : [ {
-            "description" : "Executes Redis Commands",
+            "description" : "Executes Redis Commands (HGET/HSET)",
             "destinationId" : "7",
-            "id" : "99",
-            "sourceId" : "32",
+            "id" : "111",
+            "sourceId" : "36",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Go"
+        }, {
+          "description" : "Buffered async bulk logger to Elasticsearch",
+          "documentation" : { },
+          "group" : "Monitoring Module (Code Level)",
+          "id" : "37",
+          "name" : "Observation Logger",
+          "properties" : {
+            "structurizr.dsl.identifier" : "observationLogger"
+          },
+          "relationships" : [ {
+            "description" : "Buffered Bulk Write",
+            "destinationId" : "8",
+            "id" : "115",
+            "sourceId" : "37",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -650,43 +758,43 @@
         } ],
         "description" : "Background process that pings servers continuously.",
         "documentation" : { },
-        "id" : "27",
+        "id" : "30",
         "name" : "Monitoring Worker",
         "properties" : {
           "structurizr.dsl.identifier" : "monitorWorker"
         },
         "relationships" : [ {
-          "description" : "Reads targets from",
+          "description" : "Reads targets & state, acquires distributed lock",
           "destinationId" : "7",
-          "id" : "49",
-          "sourceId" : "27",
+          "id" : "54",
+          "sourceId" : "30",
           "tags" : "Relationship"
         }, {
           "description" : "Updates server status in",
           "destinationId" : "6",
-          "id" : "50",
-          "sourceId" : "27",
+          "id" : "55",
+          "sourceId" : "30",
           "tags" : "Relationship"
         }, {
-          "description" : "Writes logs to",
+          "description" : "Writes observation logs to",
           "destinationId" : "8",
-          "id" : "51",
-          "sourceId" : "27",
+          "id" : "56",
+          "sourceId" : "30",
           "tags" : "Relationship"
         }, {
           "description" : "Sends ICMP Ping to",
           "destinationId" : "3",
-          "id" : "52",
-          "sourceId" : "27",
+          "id" : "57",
+          "sourceId" : "30",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container",
         "technology" : "Go Worker"
       }, {
         "components" : [ {
-          "description" : "Triggers daily reports and other chron jobs.",
+          "description" : "Triggers daily reports and other cron jobs.",
           "documentation" : { },
-          "id" : "34",
+          "id" : "39",
           "name" : "Scheduler Component",
           "properties" : {
             "structurizr.dsl.identifier" : "schedulerComp"
@@ -694,20 +802,20 @@
           "relationships" : [ {
             "description" : "Queries aggregated data",
             "destinationId" : "6",
-            "id" : "66",
-            "sourceId" : "34",
+            "id" : "72",
+            "sourceId" : "39",
             "tags" : "Relationship"
           }, {
             "description" : "Queries uptime",
             "destinationId" : "8",
-            "id" : "67",
-            "sourceId" : "34",
+            "id" : "73",
+            "sourceId" : "39",
             "tags" : "Relationship"
           }, {
             "description" : "Sends email to",
             "destinationId" : "2",
-            "id" : "68",
-            "sourceId" : "34",
+            "id" : "74",
+            "sourceId" : "39",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -716,16 +824,16 @@
           "description" : "Triggers periodic reporting tasks",
           "documentation" : { },
           "group" : "Reporting Module (Embedded Code Level)",
-          "id" : "35",
+          "id" : "40",
           "name" : "Daily Scheduler Worker",
           "properties" : {
             "structurizr.dsl.identifier" : "dailyScheduler"
           },
           "relationships" : [ {
             "description" : "Triggers Daily Reporting",
-            "destinationId" : "37",
-            "id" : "103",
-            "sourceId" : "35",
+            "destinationId" : "42",
+            "id" : "116",
+            "sourceId" : "40",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -734,7 +842,7 @@
           "description" : "Calculates uptime from Elasticsearch",
           "documentation" : { },
           "group" : "Reporting Module (Embedded Code Level)",
-          "id" : "36",
+          "id" : "41",
           "name" : "ES Uptime Calculator",
           "properties" : {
             "structurizr.dsl.identifier" : "esUptimeCalc"
@@ -742,8 +850,8 @@
           "relationships" : [ {
             "description" : "Queries Uptime Stats",
             "destinationId" : "8",
-            "id" : "107",
-            "sourceId" : "36",
+            "id" : "120",
+            "sourceId" : "41",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -752,28 +860,28 @@
           "description" : "Aggregates report data",
           "documentation" : { },
           "group" : "Reporting Module (Embedded Code Level)",
-          "id" : "37",
+          "id" : "42",
           "name" : "Reporting Service (Scheduler)",
           "properties" : {
             "structurizr.dsl.identifier" : "reportingServiceSch"
           },
           "relationships" : [ {
             "description" : "Reads Server Metadata",
-            "destinationId" : "38",
-            "id" : "104",
-            "sourceId" : "37",
+            "destinationId" : "43",
+            "id" : "117",
+            "sourceId" : "42",
             "tags" : "Relationship"
           }, {
             "description" : "Calculates Uptime",
-            "destinationId" : "36",
-            "id" : "106",
-            "sourceId" : "37",
+            "destinationId" : "41",
+            "id" : "119",
+            "sourceId" : "42",
             "tags" : "Relationship"
           }, {
             "description" : "Triggers Email Rendering",
-            "destinationId" : "39",
-            "id" : "108",
-            "sourceId" : "37",
+            "destinationId" : "44",
+            "id" : "121",
+            "sourceId" : "42",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -782,7 +890,7 @@
           "description" : "Postgres Data Access",
           "documentation" : { },
           "group" : "Reporting Module (Embedded Code Level)",
-          "id" : "38",
+          "id" : "43",
           "name" : "Reporting Repository (Scheduler)",
           "properties" : {
             "structurizr.dsl.identifier" : "reportingRepoSch"
@@ -790,8 +898,8 @@
           "relationships" : [ {
             "description" : "Executes SQL",
             "destinationId" : "6",
-            "id" : "105",
-            "sourceId" : "38",
+            "id" : "118",
+            "sourceId" : "43",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -800,16 +908,16 @@
           "description" : "Handles email rendering",
           "documentation" : { },
           "group" : "Notification Module (Embedded Code Level)",
-          "id" : "39",
+          "id" : "44",
           "name" : "Notification Service (Scheduler)",
           "properties" : {
             "structurizr.dsl.identifier" : "notificationServiceSch"
           },
           "relationships" : [ {
             "description" : "Delegates Email Sending",
-            "destinationId" : "40",
-            "id" : "109",
-            "sourceId" : "39",
+            "destinationId" : "45",
+            "id" : "122",
+            "sourceId" : "44",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -818,7 +926,7 @@
           "description" : "Sends emails",
           "documentation" : { },
           "group" : "Notification Module (Embedded Code Level)",
-          "id" : "40",
+          "id" : "45",
           "name" : "SMTP Client (Scheduler)",
           "properties" : {
             "structurizr.dsl.identifier" : "smtpClientSch"
@@ -826,8 +934,8 @@
           "relationships" : [ {
             "description" : "Sends Email Protocol",
             "destinationId" : "2",
-            "id" : "110",
-            "sourceId" : "40",
+            "id" : "123",
+            "sourceId" : "45",
             "tags" : "Relationship"
           } ],
           "tags" : "Element,Component",
@@ -835,7 +943,7 @@
         } ],
         "description" : "Background process that triggers periodic jobs.",
         "documentation" : { },
-        "id" : "33",
+        "id" : "38",
         "name" : "Daily Scheduler",
         "properties" : {
           "structurizr.dsl.identifier" : "scheduler"
@@ -843,20 +951,20 @@
         "relationships" : [ {
           "description" : "Reads/Writes [Embedded Reporting]",
           "destinationId" : "6",
-          "id" : "46",
-          "sourceId" : "33",
+          "id" : "51",
+          "sourceId" : "38",
           "tags" : "Relationship"
         }, {
           "description" : "Reads logs [Embedded Reporting]",
           "destinationId" : "8",
-          "id" : "47",
-          "sourceId" : "33",
+          "id" : "52",
+          "sourceId" : "38",
           "tags" : "Relationship"
         }, {
           "description" : "Sends emails [Embedded Notification]",
           "destinationId" : "2",
-          "id" : "48",
-          "sourceId" : "33",
+          "id" : "53",
+          "sourceId" : "38",
           "tags" : "Relationship"
         } ],
         "tags" : "Element,Container",
@@ -872,13 +980,13 @@
       "relationships" : [ {
         "description" : "Sends emails using",
         "destinationId" : "2",
-        "id" : "42",
+        "id" : "47",
         "sourceId" : "4",
         "tags" : "Relationship"
       }, {
         "description" : "Pings and manages",
         "destinationId" : "3",
-        "id" : "43",
+        "id" : "48",
         "sourceId" : "4",
         "tags" : "Relationship"
       } ],
@@ -887,7 +995,7 @@
   },
   "name" : "Server Management System",
   "properties" : {
-    "structurizr.inspection.error" : "73",
+    "structurizr.inspection.error" : "81",
     "structurizr.inspection.info" : "0",
     "structurizr.inspection.ignore" : "0",
     "structurizr.inspection.warning" : "0"
@@ -945,16 +1053,6 @@
       "name" : "Component View: Server Management System - Backend Application (API)",
       "order" : 3,
       "relationships" : [ {
-        "id" : "57"
-      }, {
-        "id" : "58"
-      }, {
-        "id" : "59"
-      }, {
-        "id" : "60"
-      }, {
-        "id" : "61"
-      }, {
         "id" : "62"
       }, {
         "id" : "63"
@@ -963,7 +1061,19 @@
       }, {
         "id" : "65"
       }, {
+        "id" : "66"
+      }, {
+        "id" : "67"
+      }, {
+        "id" : "68"
+      }, {
         "id" : "69"
+      }, {
+        "id" : "70"
+      }, {
+        "id" : "71"
+      }, {
+        "id" : "75"
       } ]
     }, {
       "automaticLayout" : {
@@ -973,7 +1083,7 @@
         "rankSeparation" : 100,
         "vertices" : true
       },
-      "containerId" : "27",
+      "containerId" : "30",
       "description" : "The component diagram for the Monitoring Worker.",
       "elements" : [ {
         "id" : "3",
@@ -992,7 +1102,7 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "28",
+        "id" : "31",
         "x" : 0,
         "y" : 0
       } ],
@@ -1001,13 +1111,13 @@
       "name" : "Component View: Server Management System - Monitoring Worker",
       "order" : 4,
       "relationships" : [ {
-        "id" : "70"
+        "id" : "76"
       }, {
-        "id" : "71"
+        "id" : "77"
       }, {
-        "id" : "72"
+        "id" : "78"
       }, {
-        "id" : "73"
+        "id" : "79"
       } ]
     }, {
       "automaticLayout" : {
@@ -1017,7 +1127,7 @@
         "rankSeparation" : 100,
         "vertices" : true
       },
-      "containerId" : "33",
+      "containerId" : "38",
       "description" : "The component diagram for the Daily Scheduler.",
       "elements" : [ {
         "id" : "2",
@@ -1032,7 +1142,7 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "34",
+        "id" : "39",
         "x" : 0,
         "y" : 0
       } ],
@@ -1041,11 +1151,11 @@
       "name" : "Component View: Server Management System - Daily Scheduler",
       "order" : 5,
       "relationships" : [ {
-        "id" : "66"
+        "id" : "72"
       }, {
-        "id" : "67"
+        "id" : "73"
       }, {
-        "id" : "68"
+        "id" : "74"
       } ]
     } ],
     "configuration" : {
@@ -1119,11 +1229,11 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "27",
+        "id" : "30",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "33",
+        "id" : "38",
         "x" : 0,
         "y" : 0
       } ],
@@ -1132,16 +1242,6 @@
       "name" : "Container View: Server Management System",
       "order" : 2,
       "relationships" : [ {
-        "id" : "44"
-      }, {
-        "id" : "45"
-      }, {
-        "id" : "46"
-      }, {
-        "id" : "47"
-      }, {
-        "id" : "48"
-      }, {
         "id" : "49"
       }, {
         "id" : "50"
@@ -1157,6 +1257,16 @@
         "id" : "55"
       }, {
         "id" : "56"
+      }, {
+        "id" : "57"
+      }, {
+        "id" : "58"
+      }, {
+        "id" : "59"
+      }, {
+        "id" : "60"
+      }, {
+        "id" : "61"
       } ],
       "softwareSystemId" : "4"
     } ],
@@ -1209,62 +1319,62 @@
       "order" : 6,
       "relationships" : [ {
         "description" : "1. Clicks Login",
-        "id" : "44",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
         "description" : "2. POST /login",
-        "id" : "74",
+        "id" : "80",
         "order" : "2",
         "response" : false
       }, {
         "description" : "3. Login(email, password)",
-        "id" : "75",
+        "id" : "81",
         "order" : "3",
         "response" : false
       }, {
         "description" : "4. FindByEmail(email)",
-        "id" : "76",
+        "id" : "82",
         "order" : "4",
         "response" : false
       }, {
         "description" : "5. SELECT FROM users",
-        "id" : "79",
+        "id" : "85",
         "order" : "5",
         "response" : false
       }, {
         "description" : "6. [If Invalid Credentials] Return 401 Unauthenticated",
-        "id" : "75",
+        "id" : "81",
         "order" : "6",
         "response" : true
       }, {
         "description" : "7. Create(session)",
-        "id" : "77",
+        "id" : "83",
         "order" : "7",
         "response" : false
       }, {
-        "description" : "8. INSERT INTO sessions",
-        "id" : "80",
+        "description" : "8. INSERT INTO auth_sessions",
+        "id" : "86",
         "order" : "8",
         "response" : false
       }, {
         "description" : "9. Create(refreshToken)",
-        "id" : "78",
+        "id" : "84",
         "order" : "9",
         "response" : false
       }, {
         "description" : "10. INSERT INTO refresh_tokens",
-        "id" : "81",
+        "id" : "87",
         "order" : "10",
         "response" : false
       }, {
-        "description" : "11. Return LoginResult",
-        "id" : "75",
+        "description" : "11. Return LoginResult (AccessToken + RefreshToken)",
+        "id" : "81",
         "order" : "11",
         "response" : true
       }, {
         "description" : "12. Return 200 OK + JWT Tokens + [Set-Cookie]",
-        "id" : "74",
+        "id" : "80",
         "order" : "12",
         "response" : true
       } ]
@@ -1300,38 +1410,38 @@
       "name" : "Dynamic View: Server Management System - Backend Application (API)",
       "order" : 7,
       "relationships" : [ {
-        "description" : "1. Make API Request (with JWT)",
-        "id" : "74",
+        "description" : "1. Make API Request (with JWT in Cookie/Header)",
+        "id" : "80",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. Authenticate(token)",
-        "id" : "75",
+        "description" : "2. Middleware: ParseJWT(token)",
+        "id" : "81",
         "order" : "2",
         "response" : false
       }, {
-        "description" : "3. [If missing/invalid] Return 401",
-        "id" : "75",
+        "description" : "3. [If missing/invalid/expired] Return 401",
+        "id" : "81",
         "order" : "3",
         "response" : true
       }, {
-        "description" : "4. Check session revocation status",
-        "id" : "82",
+        "description" : "4. EXISTS revoked_session:{session_id}",
+        "id" : "88",
         "order" : "4",
         "response" : false
       }, {
         "description" : "5. [If revoked] Return 401",
-        "id" : "75",
+        "id" : "81",
         "order" : "5",
         "response" : true
       }, {
-        "description" : "6. Return Principal",
-        "id" : "75",
+        "description" : "6. Return Principal (userID, roleCode, sessionID)",
+        "id" : "81",
         "order" : "6",
         "response" : true
       }, {
-        "description" : "7. Allow Request",
-        "id" : "74",
+        "description" : "7. Allow Request → proceed to handler",
+        "id" : "80",
         "order" : "7",
         "response" : true
       } ]
@@ -1384,52 +1494,52 @@
       "order" : 8,
       "relationships" : [ {
         "description" : "1. Clicks Logout",
-        "id" : "44",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
         "description" : "2. POST /logout (with JWT)",
-        "id" : "74",
+        "id" : "80",
         "order" : "2",
         "response" : false
       }, {
         "description" : "3. Logout(sessionID)",
-        "id" : "75",
+        "id" : "81",
         "order" : "3",
         "response" : false
       }, {
         "description" : "4. RevokeByID(sessionID)",
-        "id" : "77",
+        "id" : "83",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. UPDATE sessions SET revoked_at=NOW()",
-        "id" : "80",
+        "description" : "5. UPDATE auth_sessions SET revoked_at=NOW()",
+        "id" : "86",
         "order" : "5",
         "response" : false
       }, {
         "description" : "6. RevokeBySessionID(sessionID)",
-        "id" : "78",
+        "id" : "84",
         "order" : "6",
         "response" : false
       }, {
         "description" : "7. UPDATE refresh_tokens SET revoked_at=NOW()",
-        "id" : "81",
+        "id" : "87",
         "order" : "7",
         "response" : false
       }, {
-        "description" : "8. Set Revocation Key with TTL",
-        "id" : "82",
+        "description" : "8. SET revoked_session:{session_id} with TTL",
+        "id" : "88",
         "order" : "8",
         "response" : false
       }, {
         "description" : "9. Return Success",
-        "id" : "75",
+        "id" : "81",
         "order" : "9",
         "response" : true
       }, {
         "description" : "10. Return 200 OK + [Clear-Cookie]",
-        "id" : "74",
+        "id" : "80",
         "order" : "10",
         "response" : true
       } ]
@@ -1482,72 +1592,72 @@
       "order" : 9,
       "relationships" : [ {
         "description" : "1. POST /refresh",
-        "id" : "74",
+        "id" : "80",
         "order" : "1",
         "response" : false
       }, {
         "description" : "2. Refresh(refreshToken)",
-        "id" : "75",
+        "id" : "81",
         "order" : "2",
         "response" : false
       }, {
-        "description" : "3. FindByTokenHash(hash)",
-        "id" : "78",
+        "description" : "3. FindByTokenHash(SHA256(token))",
+        "id" : "84",
         "order" : "3",
         "response" : false
       }, {
         "description" : "4. SELECT FROM refresh_tokens",
-        "id" : "81",
+        "id" : "87",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. [Security] If Token Reuse Detected: Block all sessions & Return 401",
-        "id" : "82",
+        "description" : "5. [Security] If Token Reuse Detected (already revoked): LogoutAll & Return 401",
+        "id" : "88",
         "order" : "5",
         "response" : false
       }, {
         "description" : "6. [If Expired] Return 401",
-        "id" : "75",
+        "id" : "81",
         "order" : "6",
         "response" : true
       }, {
         "description" : "7. FindActiveByID(sessionID)",
-        "id" : "77",
+        "id" : "83",
         "order" : "7",
         "response" : false
       }, {
-        "description" : "8. SELECT FROM sessions",
-        "id" : "80",
+        "description" : "8. SELECT FROM auth_sessions",
+        "id" : "86",
         "order" : "8",
         "response" : false
       }, {
         "description" : "9. FindByID(userID)",
-        "id" : "76",
+        "id" : "82",
         "order" : "9",
         "response" : false
       }, {
         "description" : "10. SELECT FROM users",
-        "id" : "79",
+        "id" : "85",
         "order" : "10",
         "response" : false
       }, {
-        "description" : "11. RevokeByID & Create New",
-        "id" : "78",
+        "description" : "11. RevokeByID(old) & Create(new) & MarkReplacement",
+        "id" : "84",
         "order" : "11",
         "response" : false
       }, {
         "description" : "12. UPDATE & INSERT INTO refresh_tokens",
-        "id" : "81",
+        "id" : "87",
         "order" : "12",
         "response" : false
       }, {
-        "description" : "13. Return RefreshResult",
-        "id" : "75",
+        "description" : "13. Return RefreshResult (new AccessToken + RefreshToken)",
+        "id" : "81",
         "order" : "13",
         "response" : true
       }, {
         "description" : "14. Return 200 OK + New JWT Tokens + [Set-Cookie]",
-        "id" : "74",
+        "id" : "80",
         "order" : "14",
         "response" : true
       } ]
@@ -1592,37 +1702,37 @@
       "order" : 10,
       "relationships" : [ {
         "description" : "1. Navigates to Servers List",
-        "id" : "44",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. GET /servers?page=1",
-        "id" : "83",
+        "description" : "2. gRPC ViewServers(filter)",
+        "id" : "89",
         "order" : "2",
         "response" : false
       }, {
         "description" : "3. SearchServers(filter)",
-        "id" : "84",
+        "id" : "90",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. FetchWithPagination(filter)",
-        "id" : "85",
+        "description" : "4. Search(filter)",
+        "id" : "91",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. SELECT FROM servers WHERE status=? LIMIT OFFSET",
-        "id" : "86",
+        "description" : "5. SELECT FROM management_schema.servers WHERE status=? LIMIT OFFSET",
+        "id" : "93",
         "order" : "5",
         "response" : false
       }, {
-        "description" : "6. Return List",
-        "id" : "84",
+        "description" : "6. Return List + Total Count",
+        "id" : "90",
         "order" : "6",
         "response" : true
       }, {
-        "description" : "7. Return JSON List",
-        "id" : "83",
+        "description" : "7. Return paginated server list",
+        "id" : "89",
         "order" : "7",
         "response" : true
       } ]
@@ -1649,6 +1759,10 @@
         "x" : 0,
         "y" : 0
       }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
         "id" : "19",
         "x" : 0,
         "y" : 0
@@ -1660,6 +1774,10 @@
         "id" : "21",
         "x" : 0,
         "y" : 0
+      }, {
+        "id" : "22",
+        "x" : 0,
+        "y" : 0
       } ],
       "externalBoundariesVisible" : false,
       "key" : "ServerManagement_Create",
@@ -1667,53 +1785,63 @@
       "order" : 11,
       "relationships" : [ {
         "description" : "1. Submits New Server Form",
-        "id" : "44",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. POST /servers",
-        "id" : "83",
+        "description" : "2. gRPC CreateServer(name, ipv4)",
+        "id" : "89",
         "order" : "2",
         "response" : false
       }, {
         "description" : "3. CreateServer(input)",
-        "id" : "84",
+        "id" : "90",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. CheckExists(ip, name)",
-        "id" : "85",
+        "description" : "4. GetByName(name) & GetByIPv4(ipv4)",
+        "id" : "91",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. SELECT COUNT",
-        "id" : "86",
+        "description" : "5. SELECT FROM servers (uniqueness check)",
+        "id" : "93",
         "order" : "5",
         "response" : false
       }, {
-        "description" : "6. [If Exists] Return 409 Conflict",
-        "id" : "84",
+        "description" : "6. [If Name/IPv4 Exists] Return 409 Conflict",
+        "id" : "90",
         "order" : "6",
         "response" : true
       }, {
         "description" : "7. Create(server)",
-        "id" : "85",
+        "id" : "91",
         "order" : "7",
         "response" : false
       }, {
-        "description" : "8. INSERT INTO servers",
-        "id" : "86",
+        "description" : "8. INSERT INTO management_schema.servers",
+        "id" : "93",
         "order" : "8",
         "response" : false
       }, {
-        "description" : "9. Return Server",
-        "id" : "84",
+        "description" : "9. Dual-Write: Upsert(id, ipv4, status, 0)",
+        "id" : "92",
         "order" : "9",
+        "response" : false
+      }, {
+        "description" : "10. HSET server:info:{id} & SADD server:all_ids",
+        "id" : "94",
+        "order" : "10",
+        "response" : false
+      }, {
+        "description" : "11. Return Server",
+        "id" : "90",
+        "order" : "11",
         "response" : true
       }, {
-        "description" : "10. Return 200 OK",
-        "id" : "83",
-        "order" : "10",
+        "description" : "12. Return 200 OK",
+        "id" : "89",
+        "order" : "12",
         "response" : true
       } ]
     }, {
@@ -1739,6 +1867,10 @@
         "x" : 0,
         "y" : 0
       }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
         "id" : "19",
         "x" : 0,
         "y" : 0
@@ -1750,6 +1882,10 @@
         "id" : "21",
         "x" : 0,
         "y" : 0
+      }, {
+        "id" : "22",
+        "x" : 0,
+        "y" : 0
       } ],
       "externalBoundariesVisible" : false,
       "key" : "ServerManagement_Update",
@@ -1757,53 +1893,63 @@
       "order" : 12,
       "relationships" : [ {
         "description" : "1. Submits Edit Server Form",
-        "id" : "44",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. PUT /servers/{id}",
-        "id" : "83",
+        "description" : "2. gRPC UpdateServer(id, input)",
+        "id" : "89",
         "order" : "2",
         "response" : false
       }, {
         "description" : "3. UpdateServer(id, input)",
-        "id" : "84",
+        "id" : "90",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. FindByID(id)",
-        "id" : "85",
+        "description" : "4. GetByID(id)",
+        "id" : "91",
         "order" : "4",
         "response" : false
       }, {
         "description" : "5. SELECT FROM servers",
-        "id" : "86",
+        "id" : "93",
         "order" : "5",
         "response" : false
       }, {
         "description" : "6. [If Not Found] Return 404",
-        "id" : "84",
+        "id" : "90",
         "order" : "6",
         "response" : true
       }, {
-        "description" : "7. Update(server)",
-        "id" : "85",
+        "description" : "7. [If Name/IPv4 Changed] Check uniqueness & Update(server)",
+        "id" : "91",
         "order" : "7",
         "response" : false
       }, {
-        "description" : "8. UPDATE servers",
-        "id" : "86",
+        "description" : "8. UPDATE management_schema.servers",
+        "id" : "93",
         "order" : "8",
         "response" : false
       }, {
-        "description" : "9. Return Server",
-        "id" : "84",
+        "description" : "9. Dual-Write: Upsert(id, ipv4, status, retryCount)",
+        "id" : "92",
         "order" : "9",
+        "response" : false
+      }, {
+        "description" : "10. HSET server:info:{id}",
+        "id" : "94",
+        "order" : "10",
+        "response" : false
+      }, {
+        "description" : "11. Return Server",
+        "id" : "90",
+        "order" : "11",
         "response" : true
       }, {
-        "description" : "10. Return 200 OK",
-        "id" : "83",
-        "order" : "10",
+        "description" : "12. Return 200 OK",
+        "id" : "89",
+        "order" : "12",
         "response" : true
       } ]
     }, {
@@ -1829,6 +1975,10 @@
         "x" : 0,
         "y" : 0
       }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
         "id" : "19",
         "x" : 0,
         "y" : 0
@@ -1840,6 +1990,10 @@
         "id" : "21",
         "x" : 0,
         "y" : 0
+      }, {
+        "id" : "22",
+        "x" : 0,
+        "y" : 0
       } ],
       "externalBoundariesVisible" : false,
       "key" : "ServerManagement_Delete",
@@ -1847,38 +2001,63 @@
       "order" : 13,
       "relationships" : [ {
         "description" : "1. Clicks Delete Server",
-        "id" : "44",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. DELETE /servers/{id}",
-        "id" : "83",
+        "description" : "2. gRPC DeleteServer(id)",
+        "id" : "89",
         "order" : "2",
         "response" : false
       }, {
         "description" : "3. DeleteServer(id)",
-        "id" : "84",
+        "id" : "90",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. Delete(id)",
-        "id" : "85",
+        "description" : "4. GetByID(id)",
+        "id" : "91",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. DELETE FROM servers",
-        "id" : "86",
+        "description" : "5. SELECT FROM servers (existence check)",
+        "id" : "93",
         "order" : "5",
         "response" : false
       }, {
-        "description" : "6. Return Success",
-        "id" : "84",
+        "description" : "6. [If Not Found] Return 404",
+        "id" : "90",
         "order" : "6",
         "response" : true
       }, {
-        "description" : "7. Return 200 OK",
-        "id" : "83",
+        "description" : "7. Delete(id)",
+        "id" : "91",
         "order" : "7",
+        "response" : false
+      }, {
+        "description" : "8. DELETE FROM management_schema.servers",
+        "id" : "93",
+        "order" : "8",
+        "response" : false
+      }, {
+        "description" : "9. Dual-Write: Delete(id)",
+        "id" : "92",
+        "order" : "9",
+        "response" : false
+      }, {
+        "description" : "10. DEL server:info:{id} & SREM server:all_ids",
+        "id" : "94",
+        "order" : "10",
+        "response" : false
+      }, {
+        "description" : "11. Return Success",
+        "id" : "90",
+        "order" : "11",
+        "response" : true
+      }, {
+        "description" : "12. Return 200 OK",
+        "id" : "89",
+        "order" : "12",
         "response" : true
       } ]
     }, {
@@ -1889,7 +2068,115 @@
         "rankSeparation" : 100,
         "vertices" : true
       },
-      "description" : "Detailed sequence diagram for importing servers (Level 4)",
+      "description" : "Detailed sequence diagram for importing servers via Excel (Level 4)",
+      "elementId" : "9",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "5",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "6",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "19",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "20",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "21",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "22",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalBoundariesVisible" : false,
+      "key" : "ServerManagement_Dynamic",
+      "name" : "Dynamic View: Server Management System - Backend Application (API)",
+      "order" : 14,
+      "relationships" : [ {
+        "description" : "1. Uploads Excel file",
+        "id" : "49",
+        "order" : "1",
+        "response" : false
+      }, {
+        "description" : "2. POST /api/v1/servers/import (multipart)",
+        "id" : "89",
+        "order" : "2",
+        "response" : false
+      }, {
+        "description" : "3. ImportServers(fileBytes)",
+        "id" : "90",
+        "order" : "3",
+        "response" : false
+      }, {
+        "description" : "4. [If >2MB or Invalid Excel] Return 400 Bad Request",
+        "id" : "90",
+        "order" : "4",
+        "response" : true
+      }, {
+        "description" : "5. FindByNamesOrIPv4s(names, ips) per batch(100)",
+        "id" : "91",
+        "order" : "5",
+        "response" : false
+      }, {
+        "description" : "6. SELECT FROM servers WHERE name IN(...) OR ipv4 IN(...)",
+        "id" : "93",
+        "order" : "6",
+        "response" : false
+      }, {
+        "description" : "7. BatchCreate(validServers)",
+        "id" : "91",
+        "order" : "7",
+        "response" : false
+      }, {
+        "description" : "8. Batch INSERT INTO management_schema.servers",
+        "id" : "93",
+        "order" : "8",
+        "response" : false
+      }, {
+        "description" : "9. Dual-Write: BatchUpsert(cacheItems) via Redis Pipeline",
+        "id" : "92",
+        "order" : "9",
+        "response" : false
+      }, {
+        "description" : "10. Pipeline: HSET + SADD for each server",
+        "id" : "94",
+        "order" : "10",
+        "response" : false
+      }, {
+        "description" : "11. Return ImportResult (successCount, failCount, details)",
+        "id" : "90",
+        "order" : "11",
+        "response" : true
+      }, {
+        "description" : "12. Return 200 OK",
+        "id" : "89",
+        "order" : "12",
+        "response" : true
+      } ]
+    }, {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "description" : "Detailed sequence diagram for exporting servers to Excel (Level 4)",
       "elementId" : "9",
       "elements" : [ {
         "id" : "1",
@@ -1917,48 +2204,43 @@
         "y" : 0
       } ],
       "externalBoundariesVisible" : false,
-      "key" : "ServerManagement_Dynamic",
+      "key" : "ServerManagement_Export",
       "name" : "Dynamic View: Server Management System - Backend Application (API)",
-      "order" : 14,
+      "order" : 15,
       "relationships" : [ {
-        "description" : "1. Uploads Excel",
-        "id" : "44",
+        "description" : "1. Clicks Export Servers",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. POST /import",
-        "id" : "83",
+        "description" : "2. GET /api/v1/servers/export",
+        "id" : "89",
         "order" : "2",
         "response" : false
       }, {
-        "description" : "3. ImportServers(file)",
-        "id" : "84",
+        "description" : "3. ExportServers(filter)",
+        "id" : "90",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. [If Invalid Excel Format] Return 400 Bad Request",
-        "id" : "84",
+        "description" : "4. Search(filter)",
+        "id" : "91",
         "order" : "4",
-        "response" : true
+        "response" : false
       }, {
-        "description" : "5. BatchCreate(servers)",
-        "id" : "85",
+        "description" : "5. SELECT FROM management_schema.servers WHERE status=? LIMIT OFFSET",
+        "id" : "93",
         "order" : "5",
         "response" : false
       }, {
-        "description" : "6. Batch INSERT INTO servers",
-        "id" : "86",
+        "description" : "6. Generate Excel File & Return File Bytes",
+        "id" : "90",
         "order" : "6",
-        "response" : false
-      }, {
-        "description" : "7. Return Import Result",
-        "id" : "84",
-        "order" : "7",
         "response" : true
       }, {
-        "description" : "8. Return 200 OK",
-        "id" : "83",
-        "order" : "8",
+        "description" : "7. Return 200 OK + application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "id" : "89",
+        "order" : "7",
         "response" : true
       } ]
     }, {
@@ -1969,8 +2251,8 @@
         "rankSeparation" : 100,
         "vertices" : true
       },
-      "description" : "Detailed sequence diagram for continuous monitoring ping (Level 4)",
-      "elementId" : "27",
+      "description" : "Detailed sequence diagram for continuous monitoring ping cycle (Level 4)",
+      "elementId" : "30",
       "elements" : [ {
         "id" : "3",
         "x" : 0,
@@ -1988,92 +2270,15 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "29",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "30",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "31",
-        "x" : 0,
-        "y" : 0
-      }, {
         "id" : "32",
         "x" : 0,
         "y" : 0
-      } ],
-      "externalBoundariesVisible" : false,
-      "key" : "Monitoring_Dynamic",
-      "name" : "Dynamic View: Server Management System - Monitoring Worker",
-      "order" : 15,
-      "relationships" : [ {
-        "description" : "1. SMEMBERS server_ids (Fetch Active Servers)",
-        "id" : "95",
-        "order" : "1",
-        "response" : false
       }, {
-        "description" : "2. Ping(ip)",
-        "id" : "97",
-        "order" : "2",
-        "response" : false
-      }, {
-        "description" : "3. EvaluatePingResult(result)",
-        "id" : "96",
-        "order" : "3",
-        "response" : false
-      }, {
-        "description" : "4. GetServerState(id)",
-        "id" : "98",
-        "order" : "4",
-        "response" : false
-      }, {
-        "description" : "5. HGET server_state",
-        "id" : "99",
-        "order" : "5",
-        "response" : false
-      }, {
-        "description" : "6. [If Ping Fails] UpdateServerStatus(id, offline)",
-        "id" : "100",
-        "order" : "6",
-        "response" : false
-      }, {
-        "description" : "7. UpdateServerStatus(id, online)",
-        "id" : "100",
-        "order" : "7",
-        "response" : false
-      }, {
-        "description" : "8. UPDATE servers SET status=?",
-        "id" : "101",
-        "order" : "8",
-        "response" : false
-      }, {
-        "description" : "9. LogObservation(ping_latency, status)",
-        "id" : "102",
-        "order" : "9",
-        "response" : false
-      } ]
-    }, {
-      "automaticLayout" : {
-        "edgeSeparation" : 50,
-        "nodeSeparation" : 50,
-        "rankDirection" : "LeftRight",
-        "rankSeparation" : 100,
-        "vertices" : true
-      },
-      "description" : "Detailed sequence diagram for automated daily reporting (Level 4)",
-      "elementId" : "33",
-      "elements" : [ {
-        "id" : "2",
+        "id" : "33",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "6",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "8",
+        "id" : "34",
         "x" : 0,
         "y" : 0
       }, {
@@ -2088,62 +2293,197 @@
         "id" : "37",
         "x" : 0,
         "y" : 0
+      } ],
+      "externalBoundariesVisible" : false,
+      "key" : "Monitoring_Dynamic",
+      "name" : "Dynamic View: Server Management System - Monitoring Worker",
+      "order" : 16,
+      "relationships" : [ {
+        "description" : "1. Acquire Distributed Lock (SET lock:monitoring_worker NX EX 25)",
+        "id" : "106",
+        "order" : "1",
+        "response" : false
       }, {
-        "id" : "38",
+        "description" : "2. SMEMBERS server:all_ids (Fetch Active Server IDs)",
+        "id" : "106",
+        "order" : "2",
+        "response" : false
+      }, {
+        "description" : "3. Dispatch to Goroutine Pool (100 workers)",
+        "id" : "107",
+        "order" : "3",
+        "response" : false
+      }, {
+        "description" : "4. ICMP Ping(ip, timeout=3s)",
+        "id" : "108",
+        "order" : "4",
+        "response" : false
+      }, {
+        "description" : "5. Evaluate(serverID, ip, pingSuccess)",
+        "id" : "109",
+        "order" : "5",
+        "response" : false
+      }, {
+        "description" : "6. LogObservation(serverID, isSuccess) [fire-and-forget]",
+        "id" : "114",
+        "order" : "6",
+        "response" : false
+      }, {
+        "description" : "7. Buffered Bulk Write observation logs",
+        "id" : "115",
+        "order" : "7",
+        "response" : false
+      }, {
+        "description" : "8. GetServerState(serverID)",
+        "id" : "110",
+        "order" : "8",
+        "response" : false
+      }, {
+        "description" : "9. HGET server:info:{id} (status, retry_count)",
+        "id" : "111",
+        "order" : "9",
+        "response" : false
+      }, {
+        "description" : "10. SetServerState(serverID, newStatus, retryCount)",
+        "id" : "110",
+        "order" : "10",
+        "response" : false
+      }, {
+        "description" : "11. HSET server:info:{id}",
+        "id" : "111",
+        "order" : "11",
+        "response" : false
+      }, {
+        "description" : "12. [Only if state changed] UpdateServerStatus(id, status, retryCount)",
+        "id" : "112",
+        "order" : "12",
+        "response" : false
+      }, {
+        "description" : "13. UPDATE management_schema.servers SET current_status=?, consecutive_failures=?",
+        "id" : "113",
+        "order" : "13",
+        "response" : false
+      } ]
+    }, {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "description" : "Detailed sequence diagram for automated daily reporting (Level 4)",
+      "elementId" : "38",
+      "elements" : [ {
+        "id" : "2",
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "39",
+        "id" : "6",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "8",
         "x" : 0,
         "y" : 0
       }, {
         "id" : "40",
         "x" : 0,
         "y" : 0
+      }, {
+        "id" : "41",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "42",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "43",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "44",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "45",
+        "x" : 0,
+        "y" : 0
       } ],
       "externalBoundariesVisible" : false,
       "key" : "Reporting_Scheduled",
       "name" : "Dynamic View: Server Management System - Daily Scheduler",
-      "order" : 16,
+      "order" : 17,
       "relationships" : [ {
-        "description" : "1. GenerateDailyReport()",
-        "id" : "103",
+        "description" : "1. RequestReport(adminEmail, yesterday, yesterday)",
+        "id" : "116",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. GetServerCountByStatus()",
-        "id" : "104",
+        "description" : "2. CreateReportRequest(req) [Status=PENDING]",
+        "id" : "117",
         "order" : "2",
         "response" : false
       }, {
-        "description" : "3. SELECT count FROM servers GROUP BY status",
-        "id" : "105",
+        "description" : "3. INSERT INTO reporting_schema.report_requests",
+        "id" : "118",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. CalculateUptime()",
-        "id" : "106",
+        "description" : "4. Worker dequeues: UpdateReportStatus(PROCESSING)",
+        "id" : "117",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. Aggregation Query on ping logs",
-        "id" : "107",
+        "description" : "5. UPDATE report_requests SET status=PROCESSING",
+        "id" : "118",
         "order" : "5",
         "response" : false
       }, {
-        "description" : "6. SendReport(metadata, uptime)",
-        "id" : "108",
+        "description" : "6. GetServerCountByStatus(total/online/offline)",
+        "id" : "117",
         "order" : "6",
         "response" : false
       }, {
-        "description" : "7. Execute HTML Template & SendMail",
-        "id" : "109",
+        "description" : "7. SELECT count FROM management_schema.servers",
+        "id" : "118",
         "order" : "7",
         "response" : false
       }, {
-        "description" : "8. Send SMTP Protocol",
-        "id" : "110",
+        "description" : "8. CalculateUptime(startTime, endTime)",
+        "id" : "119",
         "order" : "8",
+        "response" : false
+      }, {
+        "description" : "9. Count total & success observations in time range",
+        "id" : "120",
+        "order" : "9",
+        "response" : false
+      }, {
+        "description" : "10. SendReportEmail(email, subject, htmlBody)",
+        "id" : "121",
+        "order" : "10",
+        "response" : false
+      }, {
+        "description" : "11. Render HTML Template & Send",
+        "id" : "122",
+        "order" : "11",
+        "response" : false
+      }, {
+        "description" : "12. SMTP Protocol",
+        "id" : "123",
+        "order" : "12",
+        "response" : false
+      }, {
+        "description" : "13. UpdateReportStatus(COMPLETED)",
+        "id" : "117",
+        "order" : "13",
+        "response" : false
+      }, {
+        "description" : "14. UPDATE report_requests SET status=COMPLETED",
+        "id" : "118",
+        "order" : "14",
         "response" : false
       } ]
     }, {
@@ -2169,10 +2509,6 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "22",
-        "x" : 0,
-        "y" : 0
-      }, {
         "id" : "23",
         "x" : 0,
         "y" : 0
@@ -2180,45 +2516,58 @@
         "id" : "24",
         "x" : 0,
         "y" : 0
+      }, {
+        "id" : "25",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "26",
+        "x" : 0,
+        "y" : 0
       } ],
       "externalBoundariesVisible" : false,
       "key" : "Reporting_Manual",
       "name" : "Dynamic View: Server Management System - Backend Application (API)",
-      "order" : 17,
+      "order" : 18,
       "relationships" : [ {
         "description" : "1. Request Report Generation",
-        "id" : "44",
+        "id" : "49",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. POST /reports (gRPC-Web)",
-        "id" : "87",
+        "description" : "2. gRPC RequestReport(email, startDate, endDate)",
+        "id" : "95",
         "order" : "2",
         "response" : false
       }, {
         "description" : "3. RequestReport(email, dates)",
-        "id" : "88",
+        "id" : "96",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. CreateReportRequest(req)",
-        "id" : "89",
+        "description" : "4. CreateReportRequest(req) [Status=PENDING]",
+        "id" : "97",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. INSERT INTO report_requests",
-        "id" : "90",
+        "description" : "5. INSERT INTO reporting_schema.report_requests",
+        "id" : "102",
         "order" : "5",
         "response" : false
       }, {
-        "description" : "6. EnqueueReport(Channel)",
-        "id" : "88",
+        "description" : "6. EnqueueReport(req) → Buffered Channel",
+        "id" : "98",
         "order" : "6",
+        "response" : false
+      }, {
+        "description" : "7. Return immediately (async)",
+        "id" : "96",
+        "order" : "7",
         "response" : true
       }, {
-        "description" : "7. Return 200 OK (Accepted)",
-        "id" : "87",
-        "order" : "7",
+        "description" : "8. Return 200 OK (Accepted)",
+        "id" : "95",
+        "order" : "8",
         "response" : true
       } ]
     }, {
@@ -2244,14 +2593,6 @@
         "x" : 0,
         "y" : 0
       }, {
-        "id" : "23",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "24",
-        "x" : 0,
-        "y" : 0
-      }, {
         "id" : "25",
         "x" : 0,
         "y" : 0
@@ -2259,50 +2600,77 @@
         "id" : "26",
         "x" : 0,
         "y" : 0
+      }, {
+        "id" : "27",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "28",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "29",
+        "x" : 0,
+        "y" : 0
       } ],
       "externalBoundariesVisible" : false,
       "key" : "Reporting_Worker_Process",
       "name" : "Dynamic View: Server Management System - Backend Application (API)",
-      "order" : 18,
+      "order" : 19,
       "relationships" : [ {
-        "description" : "1. Worker Dequeues Job from Channel",
-        "id" : "89",
+        "description" : "1. Worker dequeues job → UpdateReportStatus(PROCESSING)",
+        "id" : "99",
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. GetServerCountByStatus()",
-        "id" : "90",
+        "description" : "2. UPDATE report_requests SET status=PROCESSING",
+        "id" : "102",
         "order" : "2",
         "response" : false
       }, {
-        "description" : "3. Aggregation Query on ping logs (ESUptimeCalculator)",
-        "id" : "91",
+        "description" : "3. GetServerCountByStatus(total/online/offline)",
+        "id" : "99",
         "order" : "3",
         "response" : false
       }, {
-        "description" : "4. SendReport(metadata, uptime)",
-        "id" : "92",
+        "description" : "4. SELECT count FROM management_schema.servers",
+        "id" : "102",
         "order" : "4",
         "response" : false
       }, {
-        "description" : "5. Execute HTML Template & SendMail",
-        "id" : "93",
+        "description" : "5. CalculateUptime(startTime, endTime)",
+        "id" : "100",
         "order" : "5",
         "response" : false
       }, {
-        "description" : "6. Send SMTP Protocol",
-        "id" : "94",
+        "description" : "6. Count total & success observations",
+        "id" : "101",
         "order" : "6",
         "response" : false
       }, {
-        "description" : "7. UpdateReportRequestStatus(completed)",
-        "id" : "89",
+        "description" : "7. SendReportEmail(email, subject, htmlBody)",
+        "id" : "103",
         "order" : "7",
         "response" : false
       }, {
-        "description" : "8. UPDATE report_requests",
-        "id" : "90",
+        "description" : "8. Render HTML Template & Send",
+        "id" : "104",
         "order" : "8",
+        "response" : false
+      }, {
+        "description" : "9. SMTP Protocol",
+        "id" : "105",
+        "order" : "9",
+        "response" : false
+      }, {
+        "description" : "10. UpdateReportStatus(COMPLETED or FAILED)",
+        "id" : "99",
+        "order" : "10",
+        "response" : false
+      }, {
+        "description" : "11. UPDATE report_requests SET status=?",
+        "id" : "102",
+        "order" : "11",
         "response" : false
       } ]
     } ],
@@ -2337,11 +2705,11 @@
       "name" : "System Context View: Server Management System",
       "order" : 1,
       "relationships" : [ {
-        "id" : "41"
+        "id" : "46"
       }, {
-        "id" : "42"
+        "id" : "47"
       }, {
-        "id" : "43"
+        "id" : "48"
       } ],
       "softwareSystemId" : "4"
     } ]
