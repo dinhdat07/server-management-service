@@ -21,14 +21,14 @@ run-scheduler:
 	go run cmd/daily-scheduler/main.go
 
 dev:
-	cmd /k start cmd /k go run cmd/api/main.go
-	cmd /k start cmd /k go run cmd/monitoring-worker/main.go
-	cmd /k start cmd /k go run cmd/daily-scheduler/main.go
+	cmd /c start cmd /k go run cmd/api/main.go
+	cmd /c start cmd /k go run cmd/monitoring-worker/main.go
+	cmd /c start cmd /k go run cmd/daily-scheduler/main.go
 
 # Lệnh này dành cho trường hợp bạn đã có Monitor chạy trong Docker
 dev-no-monitor:
-	cmd /k start cmd /k go run cmd/api/main.go
-	cmd /k start cmd /k go run cmd/daily-scheduler/main.go
+	cmd /c start cmd /k go run cmd/api/main.go
+	cmd /c start cmd /k go run cmd/daily-scheduler/main.go
 
 # ============================================
 # Full Docker Commands (Mô phỏng production)
