@@ -98,7 +98,6 @@ services:
     build:
       context: .
       dockerfile: cmd/monitoring-worker/Dockerfile
-    container_name: sms_monitoring_worker
     restart: unless-stopped
     depends_on:
       postgres:
