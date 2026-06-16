@@ -43,6 +43,11 @@ dev-no-monitor:
 	cmd /c start cmd /k go run cmd/api/main.go
 	cmd /c start cmd /k go run cmd/daily-scheduler/main.go
 
+# Chạy bản đã build siêu nhanh nhưng KHÔNG kèm Monitoring Worker
+dev-fast-no-monitor: build
+	cmd /c start cmd /k bin\api.exe
+	cmd /c start cmd /k bin\daily-scheduler.exe
+
 # ============================================
 # Full Docker Commands (Mô phỏng production)
 # ============================================
