@@ -71,6 +71,20 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "createdFrom",
+            "description": "format YYYY-MM-DD",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "createdTo",
+            "description": "format YYYY-MM-DD",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -160,6 +174,20 @@
           },
           {
             "name": "sortDirection",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "createdFrom",
+            "description": "format YYYY-MM-DD",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "createdTo",
+            "description": "format YYYY-MM-DD",
             "in": "query",
             "required": false,
             "type": "string"

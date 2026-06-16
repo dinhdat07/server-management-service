@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"server-management-service/internal/modules/server_management/repository"
 	"server-management-service/internal/modules/server_management/service"
@@ -150,6 +151,13 @@ func (h *ImportExportHandler) HandleExport(w http.ResponseWriter, r *http.Reques
 		SortBy:        q.Get("sortBy"),
 		SortDirection: q.Get("sortDirection"),
 	}
+	createdFrom, createdTo, err := parseCreatedDateRange(q.Get("createdFrom"), q.Get("createdTo"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	filter.CreatedFrom = createdFrom
+	filter.CreatedTo = createdTo
 
 	fileBytes, filename, err := h.svc.ExportServers(r.Context(), filter)
 	if err != nil {
@@ -161,4 +169,27 @@ func (h *ImportExportHandler) HandleExport(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
 	w.WriteHeader(http.StatusOK)
 	w.Write(fileBytes)
+}
+
+func parseCreatedDateRange(createdFrom, createdTo string) (time.Time, time.Time, error) {
+	var from time.Time
+	var to time.Time
+	var err error
+	if createdFrom != "" {
+		from, err = time.Parse("2006-01-02", createdFrom)
+		if err != nil {
+			return time.Time{}, time.Time{}, errors.New("createdFrom must use YYYY-MM-DD format")
+		}
+	}
+	if createdTo != "" {
+		to, err = time.Parse("2006-01-02", createdTo)
+		if err != nil {
+			return time.Time{}, time.Time{}, errors.New("createdTo must use YYYY-MM-DD format")
+		}
+		to = to.AddDate(0, 0, 1)
+	}
+	if !from.IsZero() && !to.IsZero() && !from.Before(to) {
+		return time.Time{}, time.Time{}, errors.New("createdFrom must be before or equal to createdTo")
+	}
+	return from, to, nil
 }

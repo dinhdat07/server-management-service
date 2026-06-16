@@ -1,48 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-        .container { background-color: #ffffff; border-radius: 10px; padding: 30px; max-width: 650px; margin: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
-        h1 { color: #2c3e50; text-align: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 15px; margin-top: 0; }
-        .date-range { text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 30px; }
-        .stats { display: flex; justify-content: space-between; margin-top: 20px; gap: 15px; }
-        .stat-box { background-color: #f8f9fa; padding: 20px 10px; border-radius: 8px; width: 33%; text-align: center; border: 1px solid #e9ecef; }
-        .stat-box h2 { margin: 0; font-size: 28px; color: #3498db; }
-        .stat-box p { margin: 8px 0 0; color: #7f8c8d; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
-        .uptime { text-align: center; font-size: 32px; font-weight: 700; color: #27ae60; margin-top: 40px; padding: 20px; background-color: #eafaf1; border-radius: 8px; border: 1px solid #a3e4d7; }
-        .uptime span { display: block; font-size: 14px; color: #52be80; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-        .footer { text-align: center; color: #bdc3c7; font-size: 12px; margin-top: 40px; border-top: 1px solid #ecf0f1; padding-top: 20px; }
+        body { margin: 0; padding: 24px; background: #f6f8f7; color: #17211b; font-family: Arial, Helvetica, sans-serif; }
+        .container { max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #dfe7e2; border-radius: 18px; overflow: hidden; }
+        .hero { padding: 28px 32px; background: linear-gradient(135deg, #eef8f1 0%, #ffffff 62%); border-bottom: 1px solid #dfe7e2; }
+        .eyebrow { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: #4d6b58; text-transform: uppercase; letter-spacing: 0.08em; }
+        h1 { margin: 0; font-size: 28px; line-height: 1.2; color: #17211b; }
+        .subtitle { margin: 10px 0 0; color: #637066; font-size: 14px; line-height: 1.6; }
+        .section { padding: 26px 32px; border-bottom: 1px solid #edf1ee; }
+        .grid { display: table; width: 100%; border-spacing: 12px; margin: -12px; }
+        .card { display: table-cell; width: 33.33%; padding: 18px; border: 1px solid #dfe7e2; border-radius: 14px; background: #fbfdfb; vertical-align: top; }
+        .label { margin: 0; font-size: 12px; font-weight: 700; color: #637066; text-transform: uppercase; letter-spacing: 0.06em; }
+        .value { margin: 8px 0 0; font-size: 30px; font-weight: 700; color: #17211b; }
+        .hint { margin: 6px 0 0; font-size: 13px; color: #637066; }
+        .online { color: #16803c; }
+        .offline { color: #c23b3b; }
+        .uptime { padding: 24px; border-radius: 16px; background: #edf8f0; border: 1px solid #bfe5ca; text-align: center; }
+        .uptime .score { margin: 8px 0 0; font-size: 42px; font-weight: 800; color: #16803c; }
+        .summary { margin: 0; color: #637066; font-size: 14px; line-height: 1.7; }
+        .footer { padding: 22px 32px; color: #8a968e; font-size: 12px; line-height: 1.6; text-align: center; }
+        @media only screen and (max-width: 640px) {
+            body { padding: 12px; }
+            .hero, .section, .footer { padding: 22px; }
+            .grid, .card { display: block; width: auto; }
+            .card { margin: 0 0 12px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Server Status Report</h1>
-        <div class="date-range">Report Period: <strong>{{.StartDate}}</strong> to <strong>{{.EndDate}}</strong></div>
-        
-        <div class="stats">
-            <div class="stat-box">
-                <h2>{{.TotalServers}}</h2>
-                <p>Total Servers</p>
-            </div>
-            <div class="stat-box" style="background-color: #f0fdf4; border-color: #bbf7d0;">
-                <h2 style="color: #16a34a;">{{.OnlineServers}}</h2>
-                <p>Online</p>
-            </div>
-            <div class="stat-box" style="background-color: #fef2f2; border-color: #fecaca;">
-                <h2 style="color: #dc2626;">{{.OfflineServers}}</h2>
-                <p>Offline</p>
+        <div class="hero">
+            <p class="eyebrow">Server Management Service</p>
+            <h1>Server Status Report</h1>
+            <p class="subtitle">Availability summary for <strong>{{.StartDate}}</strong> to <strong>{{.EndDate}}</strong>, covering {{.PeriodDays}} day(s).</p>
+        </div>
+
+        <div class="section">
+            <div class="uptime">
+                <p class="label">Average Uptime</p>
+                <div class="score">{{printf "%.2f" .UptimePercent}}%</div>
+                <p class="hint">Overall health: <strong>{{.HealthLabel}}</strong></p>
             </div>
         </div>
 
-        <div class="uptime">
-            <span>Average Fleet Uptime</span>
-            {{printf "%.2f" .UptimePercent}}%
+        <div class="section">
+            <div class="grid">
+                <div class="card">
+                    <p class="label">Total Servers</p>
+                    <p class="value">{{.TotalServers}}</p>
+                    <p class="hint">Fleet size at generation time</p>
+                </div>
+                <div class="card">
+                    <p class="label">Online</p>
+                    <p class="value online">{{.OnlineServers}}</p>
+                    <p class="hint">{{printf "%.1f" .OnlinePercent}}% of fleet</p>
+                </div>
+                <div class="card">
+                    <p class="label">Offline</p>
+                    <p class="value offline">{{.OfflineServers}}</p>
+                    <p class="hint">{{printf "%.1f" .OfflinePercent}}% of fleet</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <p class="label" style="margin-bottom: 12px;">Summary</p>
+            <p class="summary">
+                During {{.StartDate}} to {{.EndDate}}, the fleet recorded an average uptime of
+                <strong>{{printf "%.2f" .UptimePercent}}%</strong>. At the time of this report,
+                <strong>{{.OnlineServers}}</strong> servers are online and <strong>{{.OfflineServers}}</strong> are offline.
+            </p>
         </div>
 
         <div class="footer">
-            This is an automated report generated by the Server Management System.<br>
-            Please do not reply to this email.
+            This automated report is generated by the Server Management System.
         </div>
     </div>
 </body>

@@ -23,6 +23,7 @@ type App struct {
 	reportingService service.ReportingService
 	reportingWorker  service.ReportingWorker
 	adminEmail       string
+	cronSpec         string
 }
 
 func NewApp() (*App, error) {
@@ -65,13 +66,25 @@ func NewApp() (*App, error) {
 
 	adminEmail := config.GetEnvDefault("ADMIN_EMAIL", "admin@portal.local")
 
-	c := cron.New(cron.WithLocation(time.Local))
+	locationName := config.GetEnvDefault("SCHEDULER_TIMEZONE", "Local")
+	location := time.Local
+	if locationName != "" && locationName != "Local" {
+		loadedLocation, err := time.LoadLocation(locationName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load scheduler timezone %q: %w", locationName, err)
+		}
+		location = loadedLocation
+	}
+
+	cronSpec := config.GetEnvDefault("SCHEDULER_CRON_SPEC", "0 0 * * *")
+	c := cron.New(cron.WithLocation(location))
 
 	app := &App{
 		cron:             c,
 		reportingService: reportingService,
 		reportingWorker:  reportingWorker,
 		adminEmail:       adminEmail,
+		cronSpec:         cronSpec,
 	}
 
 	err = app.setupCronJobs()
@@ -83,8 +96,12 @@ func NewApp() (*App, error) {
 }
 
 func (a *App) setupCronJobs() error {
-	// Schedule at midnight (00:00) every day
-	_, err := a.cron.AddFunc("0 0 * * *", func() {
+	cronSpec := a.cronSpec
+	if cronSpec == "" {
+		cronSpec = "0 0 * * *"
+	}
+
+	_, err := a.cron.AddFunc(cronSpec, func() {
 		log.Println("Running daily report scheduler...")
 
 		ctx := context.Background()
@@ -107,7 +124,7 @@ func (a *App) setupCronJobs() error {
 func (a *App) Start() {
 	a.reportingWorker.Start(context.Background())
 	a.cron.Start()
-	log.Println("Daily Scheduler started, waiting for cron jobs...")
+	log.Printf("Daily Scheduler started with cron %q, waiting for cron jobs...", a.cronSpec)
 }
 
 func (a *App) Stop() {
