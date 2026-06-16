@@ -1,0 +1,210 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"sync"
+
+	"server-management-service/internal/modules/reporting/domain"
+	"server-management-service/internal/modules/reporting/repository"
+	
+	esv8 "github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/core/count"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+)
+
+type ReportingWorker interface {
+	Start(ctx context.Context)
+	Stop()
+	EnqueueReport(req *domain.ReportRequest)
+}
+
+type reportingWorkerImpl struct {
+	repo        repository.ReportingRepository
+	esClient    *esv8.TypedClient
+	esIndex     string
+	jobQueue    chan *domain.ReportRequest
+	workerCount int
+	notifier    domain.ReportNotifier
+	wg          sync.WaitGroup
+}
+
+func NewReportingWorker(repo repository.ReportingRepository, esClient *esv8.TypedClient, esIndex string, workerCount int, jobQueueSize int, notifier domain.ReportNotifier) ReportingWorker {
+	if workerCount <= 0 {
+		workerCount = 5 // Default to 5 concurrent workers
+	}
+	if jobQueueSize <= 0 {
+		jobQueueSize = 100 // Default to 100 capacity
+	}
+	return &reportingWorkerImpl{
+		repo:        repo,
+		esClient:    esClient,
+		esIndex:     esIndex,
+		jobQueue:    make(chan *domain.ReportRequest, jobQueueSize), // Buffered queue
+		workerCount: workerCount,
+		notifier:    notifier,
+	}
+}
+
+func (w *reportingWorkerImpl) Start(ctx context.Context) {
+	log.Printf("[ReportingWorker] Starting pool with %d workers", w.workerCount)
+	for i := 0; i < w.workerCount; i++ {
+		w.wg.Add(1)
+		go w.worker(ctx, i)
+	}
+}
+
+func (w *reportingWorkerImpl) Stop() {
+	log.Println("[ReportingWorker] Stopping pool...")
+	close(w.jobQueue)
+	w.wg.Wait()
+	log.Println("[ReportingWorker] All workers stopped.")
+}
+
+func (w *reportingWorkerImpl) EnqueueReport(req *domain.ReportRequest) {
+	w.jobQueue <- req
+}
+
+func (w *reportingWorkerImpl) worker(ctx context.Context, id int) {
+	defer w.wg.Done()
+	log.Printf("[ReportingWorker-%d] Started", id)
+	for req := range w.jobQueue {
+		w.processReport(ctx, req, id)
+	}
+	log.Printf("[ReportingWorker-%d] Stopped", id)
+}
+
+func (w *reportingWorkerImpl) processReport(ctx context.Context, req *domain.ReportRequest, workerID int) {
+	log.Printf("[ReportingWorker-%d] Processing report: %s", workerID, req.ID)
+
+	err := w.repo.UpdateReportStatus(ctx, req.ID.String(), domain.ReportStatusProcessing)
+	if err != nil {
+		log.Printf("[ReportingWorker-%d] Failed to update status to PROCESSING: %v", workerID, err)
+		return
+	}
+
+	err = w.doWork(ctx, req)
+
+	finalStatus := domain.ReportStatusCompleted
+	if err != nil {
+		log.Printf("[ReportingWorker-%d] Report %s failed: %v", workerID, req.ID, err)
+		finalStatus = domain.ReportStatusFailed
+	}
+
+	err = w.repo.UpdateReportStatus(ctx, req.ID.String(), finalStatus)
+	if err != nil {
+		log.Printf("[ReportingWorker-%d] Failed to update final status: %v", workerID, err)
+	} else {
+		log.Printf("[ReportingWorker-%d] Finished report: %s", workerID, req.ID)
+	}
+}
+
+func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequest) error {
+	// 1. Get Server Stats natively via ReportingRepo
+	totalServers, err := w.repo.GetServerCountByStatus(ctx, "")
+	if err != nil {
+		return err
+	}
+	onlineServers, err := w.repo.GetServerCountByStatus(ctx, "ONLINE")
+	if err != nil {
+		return err
+	}
+	offlineServers, err := w.repo.GetServerCountByStatus(ctx, "OFFLINE")
+	if err != nil {
+		return err
+	}
+
+	// 2. Get Uptime from Elasticsearch
+	uptimePercent, err := w.calculateUptime(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	// 3. Render and Send HTML (Mocked for now)
+	html := fmt.Sprintf(`
+		<h1>Server Daily Report</h1>
+		<p>Date Range: %s to %s</p>
+		<ul>
+			<li>Total Servers: %d</li>
+			<li>Online Servers: %d</li>
+			<li>Offline Servers: %d</li>
+			<li>Average Uptime: %.2f%%</li>
+		</ul>
+	`, req.StartTime.Format("2006-01-02"), req.EndTime.Format("2006-01-02"), totalServers, onlineServers, offlineServers, uptimePercent)
+
+	log.Printf("[ReportingWorker] Sending email to %s:\n%s", req.RequestorEmail, html)
+	
+	// Call internal Notification Service
+	if w.notifier != nil {
+		err := w.notifier.SendReportEmail(ctx, req.RequestorEmail, "Daily Server Status Report", html)
+		if err != nil {
+			log.Printf("[ReportingWorker] Error sending email: %v", err)
+			return fmt.Errorf("failed to send email: %w", err)
+		}
+	}
+	
+	return nil
+}
+
+func (w *reportingWorkerImpl) calculateUptime(ctx context.Context, req *domain.ReportRequest) (float64, error) {
+	if w.esClient == nil {
+		return 0, nil
+	}
+
+	startStr := req.StartTime.Format("2006-01-02T15:04:05Z")
+	endStr := req.EndTime.Format("2006-01-02T15:04:05Z")
+
+	// Total Observations
+	totalCountReq, err := w.esClient.Count().
+		Index(w.esIndex).
+		Request(&count.Request{
+			Query: &types.Query{
+				Range: map[string]types.RangeQuery{
+					"timestamp": types.DateRangeQuery{
+						Gte: &startStr,
+						Lte: &endStr,
+					},
+				},
+			},
+		}).Do(ctx)
+		
+	if err != nil {
+		return 0, fmt.Errorf("failed to count total observations: %w", err)
+	}
+
+	if totalCountReq.Count == 0 {
+		return 0, nil
+	}
+
+	// Success Observations
+	successCountReq, err := w.esClient.Count().
+		Index(w.esIndex).
+		Request(&count.Request{
+			Query: &types.Query{
+				Bool: &types.BoolQuery{
+					Must: []types.Query{
+						{
+							Range: map[string]types.RangeQuery{
+								"timestamp": types.DateRangeQuery{
+									Gte: &startStr,
+									Lte: &endStr,
+								},
+							},
+						},
+						{
+							Term: map[string]types.TermQuery{
+								"is_success": {Value: true},
+							},
+						},
+					},
+				},
+			},
+		}).Do(ctx)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to count success observations: %w", err)
+	}
+
+	return (float64(successCountReq.Count) / float64(totalCountReq.Count)) * 100, nil
+}

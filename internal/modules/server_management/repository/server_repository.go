@@ -26,9 +26,6 @@ type ServerRepository interface {
 	Update(ctx context.Context, server *domain.Server) error
 	Delete(ctx context.Context, id string) error
 
-	BatchCreate(ctx context.Context, servers []*domain.Server) error // used for Import Excel
-}
-
-type ServerReadRepository interface {
+	BatchCreate(ctx context.Context, servers []*domain.Server) error
 	Search(ctx context.Context, filter ServerListFilter) ([]*domain.Server, int64, error)
 }

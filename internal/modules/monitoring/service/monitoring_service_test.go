@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"server-management-service/internal/modules/monitoring/domain"
 	serverDomain "server-management-service/internal/modules/server_management/domain"
 
 	"github.com/go-redis/redismock/v9"
@@ -19,15 +18,18 @@ type mockMonitoringRepo struct {
 	mock.Mock
 }
 
-func (m *mockMonitoringRepo) SaveTransitionAndUpdateServer(ctx context.Context, event *domain.StatusTransitionEvent, newStatus serverDomain.ServerStatus) error {
-	args := m.Called(ctx, event, newStatus)
+func (m *mockMonitoringRepo) UpdateServerStatus(ctx context.Context, serverID string, newStatus serverDomain.ServerStatus, consecutiveFailures int) error {
+	args := m.Called(ctx, serverID, newStatus, consecutiveFailures)
 	return args.Error(0)
 }
 
-type mockTxManager struct{}
+type mockObservationLogger struct {
+	mock.Mock
+}
 
-func (m *mockTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
-	return fn(ctx)
+func (m *mockObservationLogger) LogObservation(ctx context.Context, serverID string, isSuccess bool) error {
+	args := m.Called(ctx, serverID, isSuccess)
+	return args.Error(0)
 }
 
 func TestEvaluate_FailureThreshold(t *testing.T) {
@@ -37,8 +39,10 @@ func TestEvaluate_FailureThreshold(t *testing.T) {
 
 	db, mockRedis := redismock.NewClientMock()
 	repo := new(mockMonitoringRepo)
-	txManager := &mockTxManager{}
-	service := NewMonitoringService(repo, db, txManager)
+	esLogger := new(mockObservationLogger)
+	
+	// Set threshold to 2 for testing
+	service := NewMonitoringService(repo, db, esLogger, 2)
 
 	// Test 1: First Failure (Online -> Online)
 	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
@@ -47,11 +51,17 @@ func TestEvaluate_FailureThreshold(t *testing.T) {
 	})
 	mockRedis.ExpectHSet(redisKey, "status", "ONLINE", "retry_count", 1).SetVal(1)
 
-	// Repo should NOT be called since status didn't change
+	// ES Logger should be called on every ping
+	esLogger.On("LogObservation", ctx, serverID, false).Return(nil).Once()
+	
+	// Repo should be called to update consecutive_failures even though it's still online
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOnline, 1).Return(nil).Once()
+
 	err := service.Evaluate(ctx, serverID, "1.1.1.1", false)
 	assert.NoError(t, err)
 	assert.NoError(t, mockRedis.ExpectationsWereMet())
-	repo.AssertNotCalled(t, "SaveTransitionAndUpdateServer")
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
 
 	// Test 2: Second Failure (Online -> Offline)
 	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
@@ -60,12 +70,14 @@ func TestEvaluate_FailureThreshold(t *testing.T) {
 	})
 	mockRedis.ExpectHSet(redisKey, "status", "OFFLINE", "retry_count", 0).SetVal(1) // final state
 	
-	repo.On("SaveTransitionAndUpdateServer", ctx, mock.AnythingOfType("*domain.StatusTransitionEvent"), serverDomain.ServerStatusOffline).Return(nil)
+	esLogger.On("LogObservation", ctx, serverID, false).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOffline, 0).Return(nil).Once()
 
 	err = service.Evaluate(ctx, serverID, "1.1.1.1", false)
 	assert.NoError(t, err)
 	assert.NoError(t, mockRedis.ExpectationsWereMet())
-	repo.AssertCalled(t, "SaveTransitionAndUpdateServer", ctx, mock.Anything, serverDomain.ServerStatusOffline)
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
 }
 
 func TestEvaluate_RecoveryThreshold(t *testing.T) {
@@ -75,8 +87,8 @@ func TestEvaluate_RecoveryThreshold(t *testing.T) {
 
 	db, mockRedis := redismock.NewClientMock()
 	repo := new(mockMonitoringRepo)
-	txManager := &mockTxManager{}
-	service := NewMonitoringService(repo, db, txManager)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, db, esLogger, 2)
 
 	// Test: Offline -> Online (Recovery)
 	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
@@ -85,12 +97,14 @@ func TestEvaluate_RecoveryThreshold(t *testing.T) {
 	})
 	mockRedis.ExpectHSet(redisKey, "status", "ONLINE", "retry_count", 0).SetVal(1) // final state
 
-	repo.On("SaveTransitionAndUpdateServer", ctx, mock.AnythingOfType("*domain.StatusTransitionEvent"), serverDomain.ServerStatusOnline).Return(nil)
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOnline, 0).Return(nil).Once()
 
 	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
 	assert.NoError(t, err)
 	assert.NoError(t, mockRedis.ExpectationsWereMet())
-	repo.AssertCalled(t, "SaveTransitionAndUpdateServer", ctx, mock.Anything, serverDomain.ServerStatusOnline)
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
 }
 
 func TestEvaluate_DBError(t *testing.T) {
@@ -100,8 +114,8 @@ func TestEvaluate_DBError(t *testing.T) {
 
 	db, mockRedis := redismock.NewClientMock()
 	repo := new(mockMonitoringRepo)
-	txManager := &mockTxManager{}
-	service := NewMonitoringService(repo, db, txManager)
+	esLogger := new(mockObservationLogger)
+	service := NewMonitoringService(repo, db, esLogger, 2)
 
 	// Test: Offline -> Online (Recovery) but DB fails
 	mockRedis.ExpectHGetAll(redisKey).SetVal(map[string]string{
@@ -111,9 +125,12 @@ func TestEvaluate_DBError(t *testing.T) {
 	mockRedis.ExpectHSet(redisKey, "status", "ONLINE", "retry_count", 0).SetVal(1)
 
 	expectedErr := errors.New("db error")
-	repo.On("SaveTransitionAndUpdateServer", ctx, mock.Anything, serverDomain.ServerStatusOnline).Return(expectedErr)
+	esLogger.On("LogObservation", ctx, serverID, true).Return(nil).Once()
+	repo.On("UpdateServerStatus", ctx, serverID, serverDomain.ServerStatusOnline, 0).Return(expectedErr).Once()
 
 	err := service.Evaluate(ctx, serverID, "1.1.1.1", true)
 	assert.ErrorIs(t, err, expectedErr)
 	assert.NoError(t, mockRedis.ExpectationsWereMet())
+	repo.AssertExpectations(t)
+	esLogger.AssertExpectations(t)
 }

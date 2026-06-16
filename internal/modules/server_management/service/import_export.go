@@ -156,8 +156,8 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 }
 
 func (s *serverService) ExportServers(ctx context.Context, filter repository.ServerListFilter) ([]byte, string, error) {
-	// Query servers from Elasticsearch
-	servers, _, err := s.searchRepo.Search(ctx, filter)
+	// Query servers from Postgres
+	servers, _, err := s.repo.Search(ctx, filter)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to fetch servers for export: %w", err)
 	}

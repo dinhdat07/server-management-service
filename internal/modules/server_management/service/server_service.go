@@ -42,14 +42,12 @@ type ServerService interface {
 }
 
 type serverService struct {
-	repo       repository.ServerRepository
-	searchRepo repository.ServerReadRepository
+	repo repository.ServerRepository
 }
 
-func NewServerService(repo repository.ServerRepository, searchRepo repository.ServerReadRepository) ServerService {
+func NewServerService(repo repository.ServerRepository) ServerService {
 	return &serverService{
-		repo:       repo,
-		searchRepo: searchRepo,
+		repo: repo,
 	}
 }
 
@@ -159,5 +157,5 @@ func (s *serverService) SearchServers(ctx context.Context, filter repository.Ser
 		return nil, 0, errors.New("invalid status filter")
 	}
 
-	return s.searchRepo.Search(ctx, filter)
+	return s.repo.Search(ctx, filter)
 }

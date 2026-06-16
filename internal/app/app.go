@@ -11,6 +11,10 @@ import (
 	"gorm.io/gorm"
 
 	"server-management-service/internal/modules/server_management/handler/grpcserver"
+	reportinggrpc "server-management-service/internal/modules/reporting/handler/grpcserver"
+	reportingsvc "server-management-service/internal/modules/reporting/service"
+	authgrpc "server-management-service/internal/modules/identity/handler/grpcserver"
+	notificationsvc "server-management-service/internal/modules/notification/service"
 )
 
 type App struct {
@@ -21,7 +25,11 @@ type App struct {
 	HTTPServer *http.Server
 
 	RedisClient   redis.UniversalClient
-	ESClient      *elasticsearch.Client
+	ESClient      *elasticsearch.TypedClient
 	KafkaBrokers  []string
-	ServerHandler *grpcserver.ServerManagementServer
+	ServerHandler    *grpcserver.ServerManagementServer
+	ReportingHandler *reportinggrpc.ReportingGrpcHandler
+	ReportingWorker  reportingsvc.ReportingWorker
+	AuthHandler      *authgrpc.AuthServer
+	NotificationService *notificationsvc.NotificationService
 }
