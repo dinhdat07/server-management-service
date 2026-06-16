@@ -303,7 +303,37 @@ func TestHandler_ExportServers_Error(t *testing.T) {
 		Return(nil, "", errors.New("export failed")).Once()
 
 	_, err := h.ExportServers(context.Background(), &server_managementv1.ExportServersRequest{})
-
-	assert.Error(t, err)
 	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestParseCreatedDateRange(t *testing.T) {
+	t.Run("valid dates", func(t *testing.T) {
+		from, to, err := parseCreatedDateRange("2026-01-01", "2026-01-31")
+		assert.NoError(t, err)
+		assert.False(t, from.IsZero())
+		assert.False(t, to.IsZero())
+		assert.True(t, from.Before(to))
+	})
+
+	t.Run("empty dates", func(t *testing.T) {
+		from, to, err := parseCreatedDateRange("", "")
+		assert.NoError(t, err)
+		assert.True(t, from.IsZero())
+		assert.True(t, to.IsZero())
+	})
+
+	t.Run("invalid from format", func(t *testing.T) {
+		_, _, err := parseCreatedDateRange("01-01-2026", "")
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid to format", func(t *testing.T) {
+		_, _, err := parseCreatedDateRange("", "2026/01/01")
+		assert.Error(t, err)
+	})
+
+	t.Run("from after to", func(t *testing.T) {
+		_, _, err := parseCreatedDateRange("2026-02-01", "2026-01-01")
+		assert.Error(t, err)
+	})
 }

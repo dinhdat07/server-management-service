@@ -155,3 +155,24 @@ func TestReportingWorker_EnqueueAndProcess(t *testing.T) {
 	time.Sleep(200 * time.Millisecond) // Give time to process
 	worker.Stop()
 }
+
+func TestPercentage(t *testing.T) {
+	if percentage(5, 10) != 50 {
+		t.Errorf("expected 50")
+	}
+	if percentage(5, 0) != 0 {
+		t.Errorf("expected 0")
+	}
+}
+
+func TestHealthLabel(t *testing.T) {
+	if healthLabel(99.5) != "Healthy" {
+		t.Errorf("expected Healthy")
+	}
+	if healthLabel(95.0) != "Attention Recommended" {
+		t.Errorf("expected Attention Recommended")
+	}
+	if healthLabel(94.0) != "Action Required" {
+		t.Errorf("expected Action Required")
+	}
+}

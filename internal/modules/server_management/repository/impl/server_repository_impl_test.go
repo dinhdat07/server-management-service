@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -174,6 +175,29 @@ func TestGormServerRepository_Search(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, servers, 1)
 		assert.Equal(t, int32(10), total)
+	})
+
+	t.Run("success with date filters", func(t *testing.T) {
+		from, _ := time.Parse("2006-01-02", "2026-01-01")
+		to, _ := time.Parse("2006-01-02", "2026-12-31")
+
+		mock.ExpectQuery(`SELECT count.*FROM .*servers.* WHERE created_at >= \$1 AND created_at < \$2`).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(5))
+
+		rows := sqlmock.NewRows([]string{"server_id", "server_name", "ipv4"}).
+			AddRow("srv-2", "Old Server", "10.0.0.2")
+		mock.ExpectQuery(`SELECT \* FROM .*servers.* WHERE created_at >= \$1 AND created_at < \$2 ORDER BY created_at desc LIMIT .*`).
+			WillReturnRows(rows)
+
+		servers, total, err := repo.Search(context.Background(), repository.ServerListFilter{
+			Page:        1,
+			PageSize:    10,
+			CreatedFrom: from,
+			CreatedTo:   to,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, servers, 1)
+		assert.Equal(t, int32(5), total)
 	})
 }
 

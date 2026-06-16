@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
+	"strconv"
 )
 
 func main() {
@@ -17,10 +17,10 @@ func main() {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-
+	
 	var totalStmts int64
 	var coveredStmts int64
-
+	
 	pkgCov := make(map[string]int64)
 	pkgTotal := make(map[string]int64)
 
@@ -35,10 +35,10 @@ func main() {
 		if len(parts) < 3 {
 			continue
 		}
-
+		
 		path := parts[0]
-
-		// Filter criteria: ONLY internal/modules/
+		
+		// Filter criteria: we ONLY want internal/modules/
 		if !strings.HasPrefix(path, "server-management-service/internal/modules/") {
 			continue
 		}
@@ -51,6 +51,7 @@ func main() {
 		count, _ := strconv.ParseInt(parts[2], 10, 64)
 
 		// Path looks like: server-management-service/internal/modules/identity/service
+		// Split by "/"
 		partsPath := strings.Split(path, "/")
 		var moduleName string
 		for i, p := range partsPath {
@@ -69,12 +70,12 @@ func main() {
 			coveredStmts += stmts
 			pkgCov[moduleName] += stmts
 		}
-
+		
 		// calc line coverage
 		if stmts > 0 {
-			_ = float64(count) / float64(stmts) // wait count is execution count, not covered statement.
-			// if count > 0, it means the block was executed. The file has block level granularity.
-			// let's not calculate per file here, it's easier to just run the command.
+		    _ = float64(count) / float64(stmts) // wait count is execution count, not covered statement.
+		    // if count > 0, it means the block was executed. The file has block level granularity.
+		    // let's not calculate per file here, it's easier to just run the command.
 		}
 	}
 
