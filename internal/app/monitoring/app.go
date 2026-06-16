@@ -152,7 +152,7 @@ func (a *App) runCycle(ctx context.Context) {
 	if acquired {
 		logger.Log.Sugar().Info("[Producer] Lock acquired. Populating work queue...")
 		// Fetch all Server IDs
-		serverIDs, err := a.RedisClient.SMembers(ctx, "servers:all_ids").Result()
+		serverIDs, err := a.RedisClient.SMembers(ctx, "server:all_ids").Result()
 		if err == nil && len(serverIDs) > 0 {
 			// Clear existing queue just in case
 			a.RedisClient.Del(ctx, "monitoring:queue")
