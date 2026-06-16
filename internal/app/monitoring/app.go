@@ -150,20 +150,23 @@ func (a *App) runCycle(ctx context.Context) {
 	// 1. PHASE 1: Producer Election
 	acquired, _ := database.AcquireLock(ctx, a.RedisClient, lockKey, lockExpiration)
 	if acquired {
-		logger.Log.Sugar().Info("[Producer] Lock acquired. Populating work queue...")
-		// Fetch all Server IDs
-		serverIDs, err := a.RedisClient.SMembers(ctx, "server:all_ids").Result()
-		if err == nil && len(serverIDs) > 0 {
-			// Clear existing queue just in case
-			a.RedisClient.Del(ctx, "monitoring:queue")
-			
-			// Push all servers to queue
-			args := make([]interface{}, len(serverIDs))
-			for i, v := range serverIDs {
-				args[i] = v
+		// Check if queue is already empty to avoid snowballing (overlapping cycles)
+		queueLen, err := a.RedisClient.LLen(ctx, "monitoring:queue").Result()
+		if err == nil && queueLen > 0 {
+			logger.Log.Sugar().Warnf("[Producer] Queue still has %d items! Skipping push to avoid snowballing.", queueLen)
+		} else {
+			logger.Log.Sugar().Info("[Producer] Lock acquired. Populating work queue...")
+			// Fetch all Server IDs
+			serverIDs, err := a.RedisClient.SMembers(ctx, "server:all_ids").Result()
+			if err == nil && len(serverIDs) > 0 {
+				// Push all servers to queue
+				args := make([]interface{}, len(serverIDs))
+				for i, v := range serverIDs {
+					args[i] = v
+				}
+				a.RedisClient.RPush(ctx, "monitoring:queue", args...)
+				logger.Log.Sugar().Infof("[Producer] Pushed %d servers to the queue.", len(serverIDs))
 			}
-			a.RedisClient.RPush(ctx, "monitoring:queue", args...)
-			logger.Log.Sugar().Infof("[Producer] Pushed %d servers to the queue.", len(serverIDs))
 		}
 	} else {
 		logger.Log.Sugar().Info("[Consumer] Ready to process queue...")
