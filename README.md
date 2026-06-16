@@ -23,6 +23,8 @@ This repository contains the core backend services for the **Server Management S
 | **Time-Series DB** | Elasticsearch | 8.17 | Stores observation logs for lightning-fast Uptime aggregation |
 | **Email Server** | MailHog | latest | Local SMTP server for testing email notifications |
 
+*(Note: The frontend application is a separate Angular 19 SPA. You can find its repository here: [sms-frontend](https://github.com/dinhdat07/sms-frontend)).*
+
 ---
 
 ## 🚀 Local Development Setup
