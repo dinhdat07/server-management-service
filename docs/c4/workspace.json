@@ -3,7 +3,7 @@
   "description" : "Modular Architecture documentation for SMS using C4 model.",
   "documentation" : { },
   "id" : 1,
-  "lastModifiedDate" : "2026-06-15T16:06:40Z",
+  "lastModifiedDate" : "2026-06-16T02:45:57Z",
   "model" : {
     "people" : [ {
       "description" : "Manages servers, views reports, and receives notifications.",
@@ -55,7 +55,7 @@
           "structurizr.dsl.identifier" : "frontend"
         },
         "relationships" : [ {
-          "description" : "Makes API calls to [JSON/gRPC]",
+          "description" : "Makes API calls to [REST/JSON]",
           "destinationId" : "9",
           "id" : "50",
           "sourceId" : "5",
@@ -73,7 +73,7 @@
           "sourceId" : "5",
           "tags" : "Relationship"
         }, {
-          "description" : "gRPC requests",
+          "description" : "REST API requests",
           "destinationId" : "12",
           "id" : "68",
           "sourceId" : "5",
@@ -1706,7 +1706,7 @@
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. gRPC ViewServers(filter)",
+        "description" : "2. GET /api/v1/servers",
         "id" : "89",
         "order" : "2",
         "response" : false
@@ -1789,7 +1789,7 @@
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. gRPC CreateServer(name, ipv4)",
+        "description" : "2. POST /api/v1/servers",
         "id" : "89",
         "order" : "2",
         "response" : false
@@ -1897,7 +1897,7 @@
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. gRPC UpdateServer(id, input)",
+        "description" : "2. PUT /api/v1/servers/{id}",
         "id" : "89",
         "order" : "2",
         "response" : false
@@ -2005,7 +2005,7 @@
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. gRPC DeleteServer(id)",
+        "description" : "2. DELETE /api/v1/servers/{id}",
         "id" : "89",
         "order" : "2",
         "response" : false
@@ -2535,7 +2535,7 @@
         "order" : "1",
         "response" : false
       }, {
-        "description" : "2. gRPC RequestReport(email, startDate, endDate)",
+        "description" : "2. POST /api/v1/reports",
         "id" : "95",
         "order" : "2",
         "response" : false

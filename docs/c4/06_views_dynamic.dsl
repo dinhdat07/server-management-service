@@ -61,7 +61,7 @@ dynamic backend "Identity_Refresh" "Detailed sequence diagram for refreshing acc
 // Server Management Module Flows
 dynamic backend "ServerManagement_List" "Detailed sequence diagram for querying servers (Level 4)" {
     admin -> frontend "1. Navigates to Servers List"
-    frontend -> serverHandler "2. gRPC ViewServers(filter)"
+    frontend -> serverHandler "2. GET /api/v1/servers"
     serverHandler -> serverService "3. SearchServers(filter)"
     serverService -> serverRepo "4. Search(filter)"
     serverRepo -> db "5. SELECT FROM management_schema.servers WHERE status=? LIMIT OFFSET"
@@ -72,7 +72,7 @@ dynamic backend "ServerManagement_List" "Detailed sequence diagram for querying 
 
 dynamic backend "ServerManagement_Create" "Detailed sequence diagram for creating a server (Level 4)" {
     admin -> frontend "1. Submits New Server Form"
-    frontend -> serverHandler "2. gRPC CreateServer(name, ipv4)"
+    frontend -> serverHandler "2. POST /api/v1/servers"
     serverHandler -> serverService "3. CreateServer(input)"
     serverService -> serverRepo "4. GetByName(name) & GetByIPv4(ipv4)"
     serverRepo -> db "5. SELECT FROM servers (uniqueness check)"
@@ -88,7 +88,7 @@ dynamic backend "ServerManagement_Create" "Detailed sequence diagram for creatin
 
 dynamic backend "ServerManagement_Update" "Detailed sequence diagram for updating a server (Level 4)" {
     admin -> frontend "1. Submits Edit Server Form"
-    frontend -> serverHandler "2. gRPC UpdateServer(id, input)"
+    frontend -> serverHandler "2. PUT /api/v1/servers/{id}"
     serverHandler -> serverService "3. UpdateServer(id, input)"
     serverService -> serverRepo "4. GetByID(id)"
     serverRepo -> db "5. SELECT FROM servers"
@@ -104,7 +104,7 @@ dynamic backend "ServerManagement_Update" "Detailed sequence diagram for updatin
 
 dynamic backend "ServerManagement_Delete" "Detailed sequence diagram for deleting a server (Level 4)" {
     admin -> frontend "1. Clicks Delete Server"
-    frontend -> serverHandler "2. gRPC DeleteServer(id)"
+    frontend -> serverHandler "2. DELETE /api/v1/servers/{id}"
     serverHandler -> serverService "3. DeleteServer(id)"
     serverService -> serverRepo "4. GetByID(id)"
     serverRepo -> db "5. SELECT FROM servers (existence check)"
@@ -184,7 +184,7 @@ dynamic scheduler "Reporting_Scheduled" "Detailed sequence diagram for automated
 
 dynamic backend "Reporting_Manual" "Detailed sequence diagram for manual report requests (Level 4 - Asynchronous)" {
     admin -> frontend "1. Request Report Generation"
-    frontend -> reportingHandler "2. gRPC RequestReport(email, startDate, endDate)"
+    frontend -> reportingHandler "2. POST /api/v1/reports"
     reportingHandler -> reportingService "3. RequestReport(email, dates)"
     reportingService -> reportingRepo "4. CreateReportRequest(req) [Status=PENDING]"
     reportingRepo -> db "5. INSERT INTO reporting_schema.report_requests"

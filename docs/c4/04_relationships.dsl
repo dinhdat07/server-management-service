@@ -5,7 +5,7 @@ sms -> externalServers "Pings and manages"
 
 // Container Level Relationships
 admin -> frontend "Visits [HTTPS]"
-frontend -> backend "Makes API calls to [JSON/gRPC]"
+frontend -> backend "Makes API calls to [REST/JSON]"
 scheduler -> db "Reads/Writes [Embedded Reporting]"
 scheduler -> elastic "Reads logs [Embedded Reporting]"
 scheduler -> smtp "Sends emails [Embedded Notification]"
@@ -27,7 +27,7 @@ frontend -> serverComp "CRUD & Import/Export"
 serverComp -> db "Queries servers"
 serverComp -> redis "Dual-Write Server State Cache"
 
-frontend -> reportingComp "gRPC requests"
+frontend -> reportingComp "REST API requests"
 reportingComp -> db "Queries data"
 reportingComp -> elastic "Queries uptime logs"
 reportingComp -> notificationComp "Triggers email sending"
