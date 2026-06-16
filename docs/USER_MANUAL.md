@@ -1,129 +1,129 @@
-# TÀI LIỆU MÔ TẢ HỆ THỐNG VÀ HƯỚNG DẪN SỬ DỤNG
-**HỆ THỐNG QUẢN LÝ SERVER (-SMS)**
+# SYSTEM DESCRIPTION AND USER MANUAL
+**SERVER MANAGEMENT SYSTEM (SMS)**
 
 ---
 
-## PHẦN I: TỔNG QUAN VÀ ĐẶC TÍNH KỸ THUẬT (SYSTEM DESCRIPTION)
+## PART I: SYSTEM DESCRIPTION & TECHNICAL SPECIFICATIONS
 
-### 1. Giới thiệu chung
-Hệ thống Quản lý Server (-SMS) là giải pháp giám sát tập trung, cho phép Quản trị viên quản lý thông tin và theo dõi trạng thái sống/chết (Uptime) của hàng chục nghìn máy chủ theo thời gian thực thông qua giao thức ICMP (Ping).
+### 1. General Introduction
+The Server Management System (SMS) is a centralized monitoring solution that allows Administrators to manage information and track the uptime status of tens of thousands of servers in real-time via the ICMP (Ping) protocol.
 
-### 2. Các yêu cầu chức năng cốt lõi đã đáp ứng (Functional Requirements)
-Hệ thống giải quyết trọn vẹn các bài toán nghiệp vụ đặt ra, bao gồm:
-- **Giám sát trạng thái (Critical):** Định kỳ quét (ping) ngầm và cập nhật trạng thái On/Off tập trung cho hàng chục nghìn servers.
-- **Quản lý Dữ liệu (CRUD & View):** Tạo, sửa, xóa, tìm kiếm, phân trang và sắp xếp server. Đảm bảo ràng buộc định danh độc nhất và định dạng IPv4 hợp lệ.
-- **Import / Export (High):** Xử lý nhập/xuất dữ liệu hàng loạt qua file Excel tốc độ cao, cơ chế tự động bỏ qua bản ghi trùng lặp.
-- **Báo cáo tự động & Chủ động (High):** Tiến trình Cronjob tự động gửi báo cáo Uptime hàng ngày qua Email, kết hợp cùng API cho phép quản trị viên chủ động trích xuất báo cáo theo khoảng thời gian tùy chọn.
+### 2. Fulfilled Functional Requirements
+The system completely solves the required business use-cases, including:
+- **Status Monitoring (Critical):** Periodically runs background pings and updates the On/Off status centrally for tens of thousands of servers.
+- **Data Management (CRUD & View):** Create, update, delete, search, paginate, and sort servers. Ensures unique identification constraints and valid IPv4 formatting.
+- **Import / Export (High):** Handles high-speed bulk import/export via Excel files, with a mechanism to automatically skip duplicate records.
+- **Automated & Manual Reporting (High):** A Cronjob process automatically sends daily Uptime reports via Email. Additionally, APIs allow administrators to proactively extract reports for custom timeframes.
 
-### 3. Các yêu cầu phi chức năng đã đáp ứng (Non-Functional Requirements)
-Hệ thống được thiết kế và xây dựng tuân thủ nghiêm ngặt các quy chuẩn kỹ thuật. Dưới đây là các minh chứng cụ thể (Evidence) cho từng yêu cầu:
+### 3. Fulfilled Non-Functional Requirements
+The system is designed and built in strict adherence to technical standards. Below are specific evidences for each requirement:
 
-- **Kiến trúc Dữ liệu (Polyglot Persistence):** 
-  - Sử dụng **PostgreSQL** làm cơ sở dữ liệu chính (Primary DB) để lưu trữ định danh. *(Minh chứng: Khởi tạo kết nối tại `internal/shared/database/postgres.go` sử dụng driver `pgx`)*
-  - Sử dụng **Redis** làm bộ đệm tốc độ cao (Cache) và khóa phân tán (Distributed Lock). *(Minh chứng: Dual-write và khóa Mutex `lock:monitoring_worker` được code tại `internal/infrastructure/redis/`)*
-  - Sử dụng **Elasticsearch** chuyên biệt để lưu trữ log ping và tính toán tỷ lệ Uptime siêu tốc. *(Minh chứng: Hàm `BulkInsert` và API Aggregation được thiết kế tại `internal/infrastructure/elasticsearch/client.go`)*
-> **[CHÈN ẢNH TẠI ĐÂY: Chụp màn hình Docker Desktop hiển thị 3 container Postgres, Redis, Elasticsearch đang chạy xanh lét]**
+- **Data Architecture (Polyglot Persistence):**
+  - Uses **PostgreSQL** as the primary database (Primary DB) to store identities. *(Evidence: Connection initialized at `internal/shared/database/postgres.go` using the `pgx` driver)*
+  - Uses **Redis** as a high-speed cache and for distributed locking. *(Evidence: Dual-write and Mutex lock `lock:monitoring_worker` are implemented in `internal/infrastructure/redis/`)*
+  - Uses specialized **Elasticsearch** to store ping logs and calculate Uptime ratios at ultra-high speeds. *(Evidence: `BulkInsert` function and Aggregation APIs designed at `internal/infrastructure/elasticsearch/client.go`)*
+> **[INSERT IMAGE HERE: Screenshot of Docker Desktop showing 3 green/running containers for Postgres, Redis, Elasticsearch]**
 
-- **Bảo mật (Security):** 
-  - Toàn bộ API được bảo vệ bằng xác thực **JWT (JSON Web Token)** với chữ ký bảo mật. *(Minh chứng: Lớp Middleware `Authenticator` chặn mọi request không hợp lệ tại `internal/infrastructure/security/authenticator.go`)*
-  - Phân quyền chặt chẽ (RBAC) theo Role/Scope riêng cho từng endpoint.
-  - Ngăn chặn triệt để SQL Injection thông qua thư viện ORM (GORM). *(Minh chứng: Mã nguồn sử dụng `gorm.io/gorm` với Prepared Statements thay vì nối chuỗi SQL thuần)*
-> **[CHÈN ẢNH TẠI ĐÂY: Chụp màn hình Postman test thử 1 API không có Token và bị trả về lỗi 401 Unauthorized]**
+- **Security:**
+  - All APIs are protected by **JWT (JSON Web Token)** authentication with secure signatures. *(Evidence: The `Authenticator` Middleware class blocks any invalid request at `internal/infrastructure/security/authenticator.go`)*
+  - Strict Role-Based Access Control (RBAC) with unique Role/Scope per endpoint.
+  - Complete prevention of SQL Injection through an ORM library (GORM). *(Evidence: Source code uses `gorm.io/gorm` with Prepared Statements instead of raw SQL concatenation)*
+> **[INSERT IMAGE HERE: Screenshot of Postman testing an API without a Token and receiving a 401 Unauthorized error]**
 
-- **Đặc tả API (API Documentation):** 
-  - Hệ thống tự động gen tài liệu **OpenAPI (Swagger)**, định nghĩa rõ ràng Request, Response và Error Code. *(Minh chứng: Có thể xem trực tiếp UI tài liệu tại đường dẫn `/swagger/index.html` khi khởi chạy API Server, toàn bộ models được lưu ở folder `docs/`)*
-> **[CHÈN ẢNH TẠI ĐÂY: Chụp màn hình giao diện Swagger UI đẹp đẽ với các API được liệt kê đầy đủ]**
+- **API Documentation:**
+  - The system automatically generates **OpenAPI (Swagger)** documentation, clearly defining Requests, Responses, and Error Codes. *(Evidence: You can view the UI documentation directly at `/swagger/index.html` when running the API Server, all models are stored in the `docs/` folder)*
+> **[INSERT IMAGE HERE: Screenshot of a beautiful Swagger UI listing all APIs comprehensively]**
 
-- **Chất lượng mã nguồn:** 
-  - Hệ thống đạt mức **Code coverage cao (>= 90%)** qua các bài Unit Test độc lập. *(Minh chứng: Sử dụng thư viện `github.com/stretchr/testify/mock` để mock database và redis trong toàn bộ các test cases tại các package `service` và `handler`)*
-  - Ghi log (Logging) ra file đầy đủ kèm cơ chế xoay vòng log (**Logrotate**) để chống đầy ổ cứng. *(Minh chứng: Cấu hình MaxSize, MaxBackups bằng thư viện `gopkg.in/natefinch/lumberjack.v2` trong package `logger`)*
-> **[CHÈN ẢNH TẠI ĐÂY: Chụp màn hình Terminal/Console sau khi chạy lệnh \`go test ./...\` hiển thị các dòng coverage xanh lét 100%]**
-
----
-
-## PHẦN II: HƯỚNG DẪN SỬ DỤNG CHI TIẾT (USER MANUAL)
-
-### 1. Đăng nhập và Bảo mật (Authentication)
-Tất cả người dùng phải được cấp tài khoản để truy cập hệ thống.
-- Nhập **Email** và **Mật khẩu** tại màn hình đăng nhập.
-- Nếu thông tin hợp lệ, hệ thống sẽ cấp JWT Token và chuyển hướng vào trang Quản trị.
-
-> **[CHÈN ẢNH 1 TẠI ĐÂY: Chụp màn hình Giao diện Đăng nhập (Login)]**
+- **Code Quality:**
+  - The system achieves **high Code Coverage (>= 90%)** through independent Unit Tests. *(Evidence: Uses `github.com/stretchr/testify/mock` to mock database and redis in all test cases within the `service` and `handler` packages)*
+  - Full logging to files with a log rotation mechanism (**Logrotate**) to prevent disk space exhaustion. *(Evidence: MaxSize, MaxBackups configuration using the `gopkg.in/natefinch/lumberjack.v2` library in the `logger` package)*
+> **[INSERT IMAGE HERE: Screenshot of Terminal/Console after running `go test ./...` showing 100% green coverage lines]**
 
 ---
 
-### 2. Quản lý Danh sách Server (View & CRUD Server)
-Phân hệ này cho phép Admin thao tác trực tiếp với dữ liệu Server. Cấu trúc dữ liệu hiển thị tối thiểu bao gồm: `server_id` (ẩn/duy nhất), `server_name`, `ipv4`, `status`, `created_time`, `last_updated`.
+## PART II: DETAILED USER MANUAL
 
-**2.1. Xem danh sách (View Server)**
-- Hệ thống hỗ trợ hiển thị danh sách dưới dạng bảng có **Phân trang (Pagination)**.
-- Hỗ trợ **Bộ lọc (Filter)** đa dạng: Tìm kiếm thông minh đồng thời theo Tên hoặc IPv4, lọc theo Trạng thái (Online/Offline), và lọc theo **Khoảng thời gian tạo (Created From - To)**.
-- Hỗ trợ **Sắp xếp (Sort)** dữ liệu linh hoạt.
+### 1. Login and Security (Authentication)
+All users must be granted an account to access the system.
+- Enter **Email** and **Password** at the login screen.
+- If the credentials are valid, the system grants a JWT Token and redirects to the Administration dashboard.
 
-> **[CHÈN ẢNH 2 TẠI ĐÂY: Chụp màn hình Danh sách Server với thanh Search, Filter và Phân trang]**
-
-**2.2. Thêm mới, Sửa, Xóa (CRUD Server)**
-- **Thêm mới (Create):** Nhấn nút "Thêm Server". Yêu cầu `server_name` không được trùng lặp và `ipv4` phải đúng định dạng chuẩn. ID sẽ được hệ thống tự động sinh (UUID).
-- **Cập nhật (Update):** Chọn biểu tượng Sửa trên từng dòng dữ liệu.
-- **Xóa (Delete):** Chọn biểu tượng Xóa. Hệ thống có xác nhận trước khi xóa vĩnh viễn.
-
-> **[CHÈN ẢNH 3 TẠI ĐÂY: Chụp màn hình Popup Form Thêm mới / Chỉnh sửa Server hiển thị cảnh báo Validate]**
+> **[INSERT IMAGE 1 HERE: Screenshot of the Login Interface]**
 
 ---
 
-### 3. Import / Export Dữ liệu Hàng loạt
-Tính năng giúp tiết kiệm thời gian khi làm việc với hàng nghìn Server.
+### 2. Server List Management (View & CRUD Server)
+This module allows the Admin to directly manipulate Server data. The displayed data structure includes at minimum: `server_id` (hidden/unique), `server_name`, `ipv4`, `status`, `created_time`, `last_updated`.
+
+**2.1. View Server List**
+- The system supports displaying lists in a table format with **Pagination**.
+- Diverse **Filters** are supported: Smart search simultaneously by Name or IPv4, filter by Status (Online/Offline), and filter by **Creation Time Range (Created From - To)**.
+- Flexible data **Sorting** is supported.
+
+> **[INSERT IMAGE 2 HERE: Screenshot of the Server List with Search bar, Filters, and Pagination]**
+
+**2.2. Create, Update, Delete (CRUD Server)**
+- **Create:** Click the "Add Server" button. Requires `server_name` to be unique and `ipv4` to be properly formatted. The ID will be automatically generated by the system (UUID).
+- **Update:** Click the Edit icon on any data row.
+- **Delete:** Click the Delete icon. The system asks for confirmation before permanently deleting.
+
+> **[INSERT IMAGE 3 HERE: Screenshot of the Create / Edit Server Popup Form showing Validation warnings]**
+
+---
+
+### 3. Bulk Data Import / Export
+A feature to save time when working with thousands of Servers.
 
 **3.1. Import Excel**
-- Tải file Excel mẫu do hệ thống cung cấp.
-- Điền danh sách Server. Khi upload, hệ thống sẽ xử lý ngầm: tự động **bỏ qua các bản ghi trùng lặp** và báo cáo số dòng thành công/lỗi.
+- Download the sample Excel file provided by the system.
+- Fill in the list of Servers. Upon upload, the system will process in the background: automatically **skipping duplicate records** and reporting the number of successful/failed rows.
 
-> **[CHÈN ẢNH 4 TẠI ĐÂY: Chụp màn hình Popup Import Excel và thông báo kết quả Import]**
+> **[INSERT IMAGE 4 HERE: Screenshot of the Excel Import Popup and Import results notification]**
 
 **3.2. Export Excel**
-- Nhấn nút "Export Excel" trên giao diện danh sách.
-- Hệ thống sẽ trả về file `.xlsx` chứa toàn bộ dữ liệu khớp với bộ lọc hiện hành (bao gồm lọc theo Tên/IP, Trạng thái và Khoảng thời gian tạo).
+- Click the "Export Excel" button on the list interface.
+- The system will return an `.xlsx` file containing all data matching the current filters (including Name/IP, Status, and Creation Date Range filters).
 
 ---
 
-### 4. Giám sát Trạng thái (Real-time Monitoring)
-Đây là tính năng cốt lõi (Critical) của hệ thống.
-- **Quét tự động:** Tiến trình ngầm sẽ định kỳ quét (ping) toàn bộ 10.000+ servers cứ mỗi 30 giây.
-- **Cập nhật tập trung:** Bất kỳ sự thay đổi trạng thái nào (Từ On sang Off và ngược lại) đều được cập nhật tự động lên giao diện danh sách Server theo thời gian thực.
-- Bạn có thể theo dõi cột **Trạng thái (Online/Offline)** và cột **Consecutive Failures** (Số lần ping hỏng liên tiếp) để đánh giá nhanh tình trạng mạng.
+### 4. Real-time Monitoring
+This is the core (Critical) feature of the system.
+- **Auto Scanning:** A background process periodically scans (pings) all 10,000+ servers every 30 seconds.
+- **Centralized Updates:** Any status change (From On to Off and vice versa) is automatically updated on the Server list UI in real-time.
+- You can monitor the **Status (Online/Offline)** column and the **Consecutive Failures** column to quickly assess network health.
 
-> **[CHÈN ẢNH 5 TẠI ĐÂY: Chụp màn hình hiển thị cột Status xanh/đỏ và cột Lỗi liên tiếp trên danh sách]**
-
----
-
-### 5. Thống kê và Báo cáo (Reporting)
-
-**5.1. Báo cáo Tự động (Cronjob)**
-- Hệ thống có một tiến trình ngầm (Cronjob) chạy định kỳ đúng **1 lần/ngày vào lúc 00:00**.
-- Tiến trình này tự động tổng hợp số lượng Server On/Off và tính toán tỷ lệ Uptime trung bình của ngày hôm trước, sau đó **gửi thẳng qua Email** của Quản trị viên.
-
-> **[CHÈN ẢNH 6 TẠI ĐÂY: Chụp màn hình hộp thư Email hiển thị Báo cáo tự động (Nội dung HTML Email)]**
-
-**5.2. Báo cáo Chủ động (Manual Report)**
-- Admin có thể chủ động yêu cầu hệ thống tính toán Uptime cho một giai đoạn bất kỳ thông qua giao diện Báo cáo.
-- **Cách thực hiện:** Chọn `Start date`, `End date`, nhập `Email nhận` và bấm Gửi yêu cầu.
-- Giao diện sẽ hiển thị danh sách các yêu cầu báo cáo cùng trạng thái (Pending, Processing, Completed). Khi hoàn thành, báo cáo cũng sẽ được gửi về Email.
-
-> **[CHÈN ẢNH 7 TẠI ĐÂY: Chụp màn hình giao diện Yêu cầu Báo cáo Chủ động (Start date, End date) và Bảng trạng thái]**
+> **[INSERT IMAGE 5 HERE: Screenshot displaying the green/red Status column and the Consecutive Failures column on the list]**
 
 ---
 
-### 6. Giới hạn Truy cập (Rate Limiting)
-Để bảo vệ hệ thống khỏi các cuộc tấn công từ chối dịch vụ (DDoS) và đảm bảo công bằng tài nguyên, hệ thống có áp dụng các giới hạn API chặt chẽ. Khi bạn thao tác quá nhanh, hệ thống sẽ trả về lỗi **429 Too Many Requests**.
+### 5. Statistics and Reporting
 
-**Các hạn mức cụ thể (tính trên 1 phút):**
-- **Đăng nhập (Login) / Import Server:** Tối đa **5 lần/phút**.
-- **Yêu cầu Báo cáo (Request Report):** Tối đa **10 lần/phút**.
-- **Xóa Server (Delete):** Tối đa **20 lần/phút**.
-- **Refresh Token:** Tối đa **30 lần/phút**.
-- **Tạo / Sửa Server (Create/Update):** Tối đa **60 lần/phút**.
-- **Xem danh sách Server (View):** Tối đa **120 lần/phút**.
-- **Các thao tác khác:** Tối đa **300 lần/phút**.
+**5.1. Automated Report (Cronjob)**
+- The system has a background process (Cronjob) that runs periodically exactly **once a day at 00:00**.
+- This process automatically aggregates the number of On/Off Servers and calculates the average Uptime ratio for the previous day, then **sends it directly via Email** to Administrators.
+
+> **[INSERT IMAGE 6 HERE: Screenshot of an Email inbox showing the Automated Report (HTML Email content)]**
+
+**5.2. Manual Report**
+- Admins can proactively request the system to calculate Uptime for any specific period via the Reporting interface.
+- **How to execute:** Select `Start date`, `End date`, enter `Recipient Email` and click Send Request.
+- The interface will display a list of report requests along with their status (Pending, Processing, Completed). Upon completion, the report will also be sent to the Email.
+
+> **[INSERT IMAGE 7 HERE: Screenshot of the Manual Report Request interface (Start date, End date) and Status Table]**
+
+---
+
+### 6. Rate Limiting
+To protect the system against Denial of Service (DDoS) attacks and ensure fair resource allocation, strict API limits are enforced. If you interact too quickly, the system will return a **429 Too Many Requests** error.
+
+**Specific limits (calculated per 1 minute):**
+- **Login / Import Server:** Max **5 requests/min**.
+- **Request Report:** Max **10 requests/min**.
+- **Delete Server:** Max **20 requests/min**.
+- **Refresh Token:** Max **30 requests/min**.
+- **Create / Update Server:** Max **60 requests/min**.
+- **View Server List:** Max **120 requests/min**.
+- **Other operations:** Max **300 requests/min**.
 
 > [!NOTE]
-> Thời gian đếm ngược sẽ tự động reset lại sau mỗi phút. Nếu gặp lỗi này, bạn vui lòng đợi một lát rồi thử lại nhé!
+> The countdown timer will automatically reset after each minute. If you encounter this error, please wait a moment and try again!

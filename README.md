@@ -1,40 +1,59 @@
-# Server Management Service
+# Server Management Service (SMS)
 
-`server-management-service` là dịch vụ backend lõi chịu trách nhiệm quản lý vòng đời máy chủ, giám sát trạng thái kết nối thời gian thực và xử lý hệ thống báo cáo bất đồng bộ. Hệ thống được thiết kế theo kiến trúc Modular Monolith (Modulith) tập trung vào hiệu suất cao và khả năng dễ dàng bảo trì.
+A core backend service responsible for managing server lifecycles, monitoring real-time connection statuses, and processing asynchronous reporting. The system is designed using a **Modular Monolith** architecture, focusing on high performance, scalability, and ease of maintenance.
 
-### Tech Stack
+## 🛠 Tech Stack
 
-| Thành phần | Công nghệ sử dụng |
-|---|---|
-| **Ngôn ngữ** | Go 1.22 |
-| **Giao tiếp** | gRPC, REST (thông qua `grpc-gateway v2`) |
-| **Storage (OLTP)** | PostgreSQL 15 |
-| **Cache & Lock** | Redis 7 |
-| **Log & Analytics** | Elasticsearch 8 |
+- **Language:** Go 1.22
+- **Communication:** gRPC, REST (via `grpc-gateway v2`)
+- **Storage (OLTP):** PostgreSQL 15
+- **Cache & Distributed Lock:** Redis 7
+- **Log & Analytics:** Elasticsearch 8
 
 ---
 
-## Các Tính Năng Cốt Lõi (Core Features)
+## 🚀 Installation & Local Development (Developer Guide)
 
-- **Quản lý vòng đời Server:** Hỗ trợ CRUD, tìm kiếm, phân trang và cơ chế Import/Export dữ liệu lớn hàng loạt (Batch Processing) thông qua file Excel.
-- **Giám sát trạng thái thời gian thực:** Sử dụng Background Worker với Goroutine Pool để thực hiện ICMP Ping song song hàng nghìn server. Trạng thái được cập nhật qua State Machine (ONLINE/OFFLINE).
-- **Hệ thống sinh báo cáo bất đồng bộ:** Xử lý tính toán Uptime từ hàng triệu bản ghi trong Elasticsearch. Sinh báo cáo HTML và gửi qua Email (SMTP) dưới dạng Async Job.
-- **Tự động hóa tác vụ:** Tích hợp Daily Scheduler chạy cron job tự động trigger luồng báo cáo hàng ngày.
+### 1. System Requirements
+- Go 1.22+
+- Docker & Docker Compose
+- Make (On Windows, this can be installed via MinGW, or you can run the commands inside the `Makefile` manually).
+
+### 2. Clone the Repository
+```bash
+git clone <REPO_URL>
+cd server-management-service
+```
+
+### 3. Environment Configuration
+Create a `.env` configuration file based on the provided example:
+```bash
+cp .env.example .env
+```
+*(Note: The default values in `.env.example` are already mapped to the default ports of the local infrastructure in step 4).*
+
+### 4. Start Infrastructure
+Use Docker Compose to start up the required dependencies, including PostgreSQL, Redis, Elasticsearch, and MailHog:
+```bash
+make infra-up
+```
+*(To stop the infrastructure: `make infra-down`)*
+
+### 5. Run the Application
+The SMS system consists of 3 independent processes running in parallel. To quickly spin up the entire Dev environment on Windows:
+```bash
+make dev
+```
+*(This command will automatically open 3 new Terminal windows corresponding to the 3 services).*
+
+**If you wish to run each process individually, use the following commands:**
+- `make run-api`: Starts the API Server.
+- `make run-monitor`: Starts the Monitoring Worker (responsible for pinging servers).
+- `make run-scheduler`: Starts the Daily Scheduler (responsible for triggering the report cronjob).
 
 ---
 
-## Bản Đồ Tài Liệu (Documentation Map)
-
-Để tìm hiểu sâu hơn về dự án, vui lòng tham khảo các tài liệu chuyên đề sau:
-
-| Tài liệu | Mô tả nội dung |
-|---|---|
-|  [C4_MODEL.md](./docs/C4_MODEL.md) | Sơ đồ kiến trúc hệ thống cấp độ Context, Container, Component, sơ đồ Data Model và thiết kế State Machine. |
-|  [USER_GUIDE.md](./docs/USER_GUIDE.md) | Hướng dẫn cài đặt môi trường, danh sách API cURL mẫu, ma trận mã lỗi và kịch bản sửa lỗi (Troubleshooting). |
-
----
-
-##  Sơ Đồ Kiến Trúc Rút Gọn (High-Level Architecture)
+## 🏛 High-Level Architecture
 
 ```mermaid
 flowchart LR
@@ -63,57 +82,18 @@ flowchart LR
     MON -->|"Log Ping"| ES
 ```
 
-**Chi tiết kỹ thuật & luồng dữ liệu:** Xem tại [C4_MODEL.md](./docs/C4_MODEL.md).
-
 ---
 
-## Khởi Chạy Nhanh (Quick Start)
+## 🧪 Testing & Quality
 
-Môi trường Development đã được đóng gói sẵn với `docker-compose` và `Makefile`. Bạn chỉ cần thực hiện 2 bước đơn giản:
+The project enforces strict Unit Testing using Mocking tools (`mockery`). The target code coverage for core modules must always be **> 90%**.
 
+To run tests locally, use the following commands:
 ```bash
-# 1. Khởi động các dependencies (PostgreSQL, Redis, Elasticsearch, MailHog)
-make infra-up
-
-# 2. Khởi chạy toàn bộ hệ thống (API Server + Workers)
-make dev
-```
-
-*(Lệnh `make dev` tự động biên dịch và chạy song song cả 3 tiến trình `cmd/api`, `cmd/monitoring-worker`, và `cmd/daily-scheduler` trong cùng một terminal).*
-
-**Các lệnh hỗ trợ khác (nếu muốn chạy rời từng process):**
-- `make run-api`: Chạy riêng API Server.
-- `make run-monitor`: Chạy riêng Monitoring Worker.
-- `make run-scheduler`: Chạy riêng Daily Scheduler.
-- `make infra-down`: Tắt toàn bộ hạ tầng Local.
-
-**Hướng dẫn thiết lập cấu hình `.env` chi tiết:** Xem tại [USER_GUIDE.md](./docs/USER_GUIDE.md).
-
----
-
-## Kiểm Thử & Chất Lượng (Testing & Quality)
-
-Dự án áp dụng Unit Test nghiêm ngặt với công cụ Mocking (`mockery`). Mục tiêu độ phủ mã (Test Coverage) cho các module lõi là **> 90%**.
-
-### Chạy Kiểm Thử
-
-```bash
-# Chạy toàn bộ test suite và sinh báo cáo coverage trên terminal
+# Run the entire test suite and generate a coverage report in the terminal
 make test-coverage
 
-# Mở báo cáo coverage trực quan trên trình duyệt
+# Open the visual coverage report in your HTML browser
 make test-coverage-html
 ```
-
-### Trạng Thái Coverage Hiện Tại (Current Coverage Matrix)
-
-| Module Core | Component | Trạng thái Coverage | Ghi chú |
-|---|---|---|---|
-| `identity` | AuthService | ✅ **> 90%** | Đã bao phủ Login, Refresh, Logout, Blacklist. |
-| `monitoring` | MonitoringService | ✅ **> 90%** | Đã bao phủ FSM đánh giá trạng thái và Write Amplification logic. |
-| `reporting` | ReportingService | ✅ **> 90%** | Đã test Enqueue Job và Update DB status. |
-| `reporting` | ReportingWorker | ✅ **> 90%** | Đã test luồng tính Uptime ES và HTML Mailer. |
-| `server_mgmt` | ServerService (CRUD) | ✅ **> 90%** | Bao phủ Create, Update, Delete, Search. |
-| `server_mgmt` | **ServerService (Import/Export)** | ⏳ **< 90%** | *Cần bổ sung test cho module xử lý file Excel (batch logic & edge cases).* |
-| `app/scheduler`| **Cron Trigger** | ⏳ **< 90%** | *Cần bổ sung test cho việc tính toán time window và gọi gRPC client.* |
 
