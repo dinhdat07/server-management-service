@@ -25,6 +25,19 @@ dev:
 	cmd /c start cmd /k go run cmd/monitoring-worker/main.go
 	cmd /c start cmd /k go run cmd/daily-scheduler/main.go
 
+# Build ra file thực thi (.exe trên Windows) để chạy nhanh hơn
+build:
+	if not exist bin mkdir bin
+	go build -o bin/api.exe cmd/api/main.go
+	go build -o bin/monitoring-worker.exe cmd/monitoring-worker/main.go
+	go build -o bin/daily-scheduler.exe cmd/daily-scheduler/main.go
+
+# Chạy bản đã build (tốc độ khởi động siêu nhanh)
+dev-fast: build
+	cmd /c start cmd /k bin\api.exe
+	cmd /c start cmd /k bin\monitoring-worker.exe
+	cmd /c start cmd /k bin\daily-scheduler.exe
+
 # Lệnh này dành cho trường hợp bạn đã có Monitor chạy trong Docker
 dev-no-monitor:
 	cmd /c start cmd /k go run cmd/api/main.go
