@@ -190,19 +190,50 @@ func (s *serverService) ExportServers(ctx context.Context, filter repository.Ser
 		return nil, "", fmt.Errorf("failed to fetch servers for export: %w", err)
 	}
 
-	// Write to Excel via StreamWriter
+	buf, err := generateServerExcel(servers)
+	if err != nil {
+		return nil, "", err
+	}
+
+	filename := fmt.Sprintf("servers_export_%s.xlsx", time.Now().Format("20060102_150405"))
+	return buf, filename, nil
+}
+
+func generateServerExcel(servers []*domain.Server) ([]byte, error) {
 	f := excelize.NewFile()
 	defer f.Close()
 
+	// Set column widths for better balance
+	f.SetColWidth("Sheet1", "A", "A", 30) // Server Name
+	f.SetColWidth("Sheet1", "B", "B", 20) // IPv4
+	f.SetColWidth("Sheet1", "C", "C", 15) // Status
+	f.SetColWidth("Sheet1", "D", "E", 25) // Dates
+
 	sw, err := f.NewStreamWriter("Sheet1")
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to init stream writer: %w", err)
+		return nil, fmt.Errorf("failed to init stream writer: %w", err)
+	}
+
+	// Create header style
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true, Color: "FFFFFF"},
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"#0b4884"}, Pattern: 1},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create style: %w", err)
 	}
 
 	// Write header
-	headers := []interface{}{"Server ID", "Server Name", "IPv4", "Status", "Consecutive Failures", "Created At"}
+	headers := []interface{}{
+		excelize.Cell{Value: "Server Name", StyleID: headerStyle},
+		excelize.Cell{Value: "IPv4 Address", StyleID: headerStyle},
+		excelize.Cell{Value: "Status", StyleID: headerStyle},
+		excelize.Cell{Value: "Created At", StyleID: headerStyle},
+		excelize.Cell{Value: "Last Updated", StyleID: headerStyle},
+	}
 	if err := sw.SetRow("A1", headers); err != nil {
-		return nil, "", fmt.Errorf("failed to write header: %w", err)
+		return nil, fmt.Errorf("failed to write header: %w", err)
 	}
 
 	// Write data
@@ -211,27 +242,25 @@ func (s *serverService) ExportServers(ctx context.Context, filter repository.Ser
 		cell, _ := excelize.CoordinatesToCellName(1, rowIdx)
 
 		row := []interface{}{
-			srv.ServerID,
 			srv.ServerName,
 			srv.IPv4,
 			string(srv.CurrentStatus),
-			srv.ConsecutiveFailures,
-			srv.CreatedAt.Format(time.RFC3339),
+			srv.CreatedAt.Format("2006-01-02 15:04:05"),
+			srv.UpdatedAt.Format("2006-01-02 15:04:05"),
 		}
 		if err := sw.SetRow(cell, row); err != nil {
-			return nil, "", fmt.Errorf("failed to write row %d: %w", rowIdx, err)
+			return nil, fmt.Errorf("failed to write row %d: %w", rowIdx, err)
 		}
 	}
 
 	if err := sw.Flush(); err != nil {
-		return nil, "", fmt.Errorf("failed to flush stream: %w", err)
+		return nil, fmt.Errorf("failed to flush stream: %w", err)
 	}
 
 	var buf bytes.Buffer
 	if err := f.Write(&buf); err != nil {
-		return nil, "", fmt.Errorf("failed to write excel to buffer: %w", err)
+		return nil, fmt.Errorf("failed to write excel to buffer: %w", err)
 	}
 
-	filename := fmt.Sprintf("servers_export_%s.xlsx", time.Now().Format("20060102_150405"))
-	return buf.Bytes(), filename, nil
+	return buf.Bytes(), nil
 }
