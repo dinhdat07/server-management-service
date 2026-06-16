@@ -1,7 +1,7 @@
 package database
 
 import (
-	"log"
+	"server-management-service/internal/shared/logger"
 	"sync"
 	"time"
 
@@ -20,7 +20,7 @@ func GetInstance(dsn string) (*gorm.DB, error) {
 	dbOnce.Do(func() {
 		dbInstance, dbError = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if dbError != nil {
-			log.Printf("Failed to connect to database: %v", dbError)
+			logger.Log.Sugar().Errorf("Failed to connect to database: %v", dbError)
 			return
 		}
 

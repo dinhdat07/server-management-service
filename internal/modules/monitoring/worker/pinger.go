@@ -1,7 +1,7 @@
 package worker
 
 import (
-	"log"
+	"server-management-service/internal/shared/logger"
 	"time"
 
 	probing "github.com/prometheus-community/pro-bing"
@@ -25,7 +25,7 @@ func NewICMPPinger(privileged bool) Pinger {
 func (p *ICMPPinger) Ping(ip string, timeout time.Duration) bool {
 	pinger, err := probing.NewPinger(ip)
 	if err != nil {
-		log.Printf("[Pinger] Invalid IP address or resolve failed for IP %s: %v", ip, err)
+		logger.Log.Sugar().Errorf("[Pinger] Invalid IP address or resolve failed for IP %s: %v", ip, err)
 		return false
 	}
 
@@ -35,7 +35,7 @@ func (p *ICMPPinger) Ping(ip string, timeout time.Duration) bool {
 
 	err = pinger.Run()
 	if err != nil {
-		log.Printf("[Pinger] Execution failed for IP %s: %v", ip, err)
+		logger.Log.Sugar().Errorf("[Pinger] Execution failed for IP %s: %v", ip, err)
 		return false
 	}
 

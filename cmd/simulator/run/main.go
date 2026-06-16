@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"runtime"
+	"server-management-service/internal/shared/logger"
 	"strconv"
 	"time"
 
@@ -34,7 +34,7 @@ type roundMetrics struct {
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("simulation failed: %v", err)
+		logger.Log.Sugar().Fatalf("simulation failed: %v", err)
 	}
 }
 
@@ -46,11 +46,11 @@ func run() error {
 		simulatorURL:  envStr("SIMULATOR_URL", "http://localhost:8080"),
 	}
 
-	log.Printf("=== Simulation Config ===")
-	log.Printf("Servers: %d, Rounds: %d, Toggle: %d%%", cfg.serverCount, cfg.rounds, cfg.togglePercent)
+	logger.Log.Sugar().Infof("=== Simulation Config ===")
+	logger.Log.Sugar().Infof("Servers: %d, Rounds: %d, Toggle: %d%%", cfg.serverCount, cfg.rounds, cfg.togglePercent)
 
 	// Warmup: reset all IPs to UP
-	log.Println("=== Warmup: resetting all servers UP ===")
+	logger.Log.Sugar().Info("=== Warmup: resetting all servers UP ===")
 	if err := resetAll(cfg.simulatorURL); err != nil {
 		return fmt.Errorf("warmup reset: %w", err)
 	}
@@ -67,31 +67,27 @@ func run() error {
 	// Run rounds
 	var metrics []roundMetrics
 	for round := 1; round <= cfg.rounds; round++ {
-		log.Printf("=== Round %d/%d ===", round, cfg.rounds)
+		logger.Log.Sugar().Infof("=== Round %d/%d ===", round, cfg.rounds)
 
 		toggleCount := cfg.serverCount * cfg.togglePercent / 100
 		ipsToDown := pickRandom(allIPs, toggleCount)
 		if err := toggleIPs(cfg.simulatorURL, "down", ipsToDown); err != nil {
-			log.Printf("WARN: toggle down round %d: %v", round, err)
+			logger.Log.Sugar().Warnf("WARN: toggle down round %d: %v", round, err)
 		}
 
 		ipsToUp := pickRandom(allIPs, toggleCount/2)
 		if err := toggleIPs(cfg.simulatorURL, "up", ipsToUp); err != nil {
-			log.Printf("WARN: toggle up round %d: %v", round, err)
+			logger.Log.Sugar().Warnf("WARN: toggle up round %d: %v", round, err)
 		}
-
-		runtime.GC()
-		var m1 runtime.MemStats
-		runtime.ReadMemStats(&m1)
 
 		start := time.Now()
 		if err := app.Pool.Run(context.Background()); err != nil {
-			log.Printf("WARN: worker run round %d: %v", round, err)
+			logger.Log.Sugar().Warnf("WARN: worker run round %d: %v", round, err)
 		}
 		elapsed := time.Since(start)
 
-		var m2 runtime.MemStats
-		runtime.ReadMemStats(&m2)
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
 
 		status := getStatus(cfg.simulatorURL)
 		rm := roundMetrics{
@@ -99,25 +95,24 @@ func run() error {
 			duration:    elapsed,
 			serversUp:   status.Total - status.Down,
 			serversDown: status.Down,
-			memAllocMB:  float64(m2.Alloc-m1.Alloc) / 1024 / 1024,
+			memAllocMB:  float64(m.Alloc) / 1024 / 1024,
 			goroutines:  runtime.NumGoroutine(),
 		}
 		metrics = append(metrics, rm)
 
-		log.Printf("Round %d: %v, up=%d, down=%d, mem=%.1fMB, goroutines=%d",
+		logger.Log.Sugar().Infof("Round %d: %v, up=%d, down=%d, mem=%.1fMB, goroutines=%d",
 			round, elapsed.Round(time.Millisecond), rm.serversUp, rm.serversDown, rm.memAllocMB, rm.goroutines)
 	}
 
-	log.Println("=== Summary ===")
+	logger.Log.Sugar().Info("=== Summary ===")
 	var totalDur time.Duration
 	for _, m := range metrics {
 		totalDur += m.duration
 	}
 	avg := totalDur / time.Duration(len(metrics))
-	log.Printf("Rounds: %d", len(metrics))
-	log.Printf("Avg round duration: %v", avg.Round(time.Millisecond))
-	log.Printf("Servers per second: %.0f", float64(cfg.serverCount)/avg.Seconds())
-	log.Printf("Peak mem delta: %.1f MB", maxMemDelta(metrics))
+	logger.Log.Sugar().Infof("Rounds: %d", len(metrics))
+	logger.Log.Sugar().Infof("Avg round duration: %v", avg.Round(time.Millisecond))
+	logger.Log.Sugar().Infof("Servers per second: %.0f", float64(cfg.serverCount)/avg.Seconds())
 
 	return nil
 }
@@ -210,14 +205,4 @@ func envStr(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
-}
-
-func maxMemDelta(metrics []roundMetrics) float64 {
-	max := 0.0
-	for _, m := range metrics {
-		if m.memAllocMB > max {
-			max = m.memAllocMB
-		}
-	}
-	return max
 }

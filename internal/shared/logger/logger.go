@@ -13,6 +13,10 @@ import (
 
 var Log *zap.Logger
 
+func init() {
+	Log, _ = zap.NewDevelopment()
+}
+
 func InitLogger(cfg config.LoggerConfig, appName string) {
 	// Create logs directory if it doesn't exist
 	if err := os.MkdirAll("logs", 0755); err != nil {
@@ -46,7 +50,10 @@ func InitLogger(cfg config.LoggerConfig, appName string) {
 	})
 
 	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	fileEncoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
+
+	prodConfig := zap.NewProductionEncoderConfig()
+	prodConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	fileEncoder := zapcore.NewJSONEncoder(prodConfig)
 
 	core := zapcore.NewTee(
 		zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), zap.InfoLevel),

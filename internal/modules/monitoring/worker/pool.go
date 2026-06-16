@@ -3,7 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
-	"log"
+	"server-management-service/internal/shared/logger"
 	"sync"
 	"time"
 
@@ -77,11 +77,11 @@ func (w *workerPool) processServer(ctx context.Context, serverID string) {
 	redisKey := fmt.Sprintf(infraRedis.ServerInfoKeyFmt, serverID)
 	ipv4, err := w.rdb.HGet(ctx, redisKey, "ipv4").Result()
 	if err != nil {
-		log.Printf("[Worker] Failed to get IP for server %s: %v\n", serverID, err)
+		logger.Log.Sugar().Errorf("[Worker] Failed to get IP for server %s: %v\n", serverID, err)
 		return
 	}
 	if ipv4 == "" {
-		log.Printf("[Worker] IPv4 is empty for server %s\n", serverID)
+		logger.Log.Sugar().Infof("[Worker] IPv4 is empty for server %s\n", serverID)
 		return
 	}
 
@@ -91,6 +91,6 @@ func (w *workerPool) processServer(ctx context.Context, serverID string) {
 	// Evaluate State Machine
 	err = w.monService.Evaluate(ctx, serverID, ipv4, success)
 	if err != nil {
-		log.Printf("[Worker] Failed to evaluate state for server %s (IP: %s): %v\n", serverID, ipv4, err)
+		logger.Log.Sugar().Errorf("[Worker] Failed to evaluate state for server %s (IP: %s): %v\n", serverID, ipv4, err)
 	}
 }

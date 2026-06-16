@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
+	"server-management-service/internal/shared/logger"
 
 	esv8 "github.com/elastic/go-elasticsearch/v8"
 )
@@ -23,9 +23,7 @@ func NewElasticsearchClient(ctx context.Context, addresses []string) (*esv8.Type
 		return nil, fmt.Errorf("connect elasticsearch: %w", err)
 	}
 
-
-
-	log.Println("[Elasticsearch] Connected successfully")
+	logger.Log.Sugar().Info("[Elasticsearch] Connected successfully")
 
 	return es, nil
 }

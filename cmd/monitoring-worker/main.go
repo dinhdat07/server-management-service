@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"server-management-service/internal/shared/logger"
 
 	"server-management-service/internal/app/monitoring"
 )
@@ -9,10 +9,10 @@ import (
 func main() {
 	app, err := monitoring.NewApp()
 	if err != nil {
-		log.Fatalf("init monitoring worker: %v", err)
+		logger.Log.Sugar().Fatalf("init monitoring worker: %v", err)
 	}
 
 	if err := app.Run(); err != nil {
-		log.Fatalf("run monitoring worker: %v", err)
+		logger.Log.Sugar().Fatalf("run monitoring worker: %v", err)
 	}
 }

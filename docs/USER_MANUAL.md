@@ -8,7 +8,14 @@
 ### 1. Giới thiệu chung
 Hệ thống Quản lý Server (-SMS) là giải pháp giám sát tập trung, cho phép Quản trị viên quản lý thông tin và theo dõi trạng thái sống/chết (Uptime) của hàng chục nghìn máy chủ theo thời gian thực thông qua giao thức ICMP (Ping).
 
-### 2. Các yêu cầu phi chức năng đã đáp ứng (Non-Functional Requirements)
+### 2. Các yêu cầu chức năng cốt lõi đã đáp ứng (Functional Requirements)
+Hệ thống giải quyết trọn vẹn các bài toán nghiệp vụ đặt ra, bao gồm:
+- **Giám sát trạng thái (Critical):** Định kỳ quét (ping) ngầm và cập nhật trạng thái On/Off tập trung cho hàng chục nghìn servers.
+- **Quản lý Dữ liệu (CRUD & View):** Tạo, sửa, xóa, tìm kiếm, phân trang và sắp xếp server. Đảm bảo ràng buộc định danh độc nhất và định dạng IPv4 hợp lệ.
+- **Import / Export (High):** Xử lý nhập/xuất dữ liệu hàng loạt qua file Excel tốc độ cao, cơ chế tự động bỏ qua bản ghi trùng lặp.
+- **Báo cáo tự động & Chủ động (High):** Tiến trình Cronjob tự động gửi báo cáo Uptime hàng ngày qua Email, kết hợp cùng API cho phép quản trị viên chủ động trích xuất báo cáo theo khoảng thời gian tùy chọn.
+
+### 3. Các yêu cầu phi chức năng đã đáp ứng (Non-Functional Requirements)
 Hệ thống được thiết kế và xây dựng tuân thủ nghiêm ngặt các quy chuẩn kỹ thuật. Dưới đây là các minh chứng cụ thể (Evidence) cho từng yêu cầu:
 
 - **Kiến trúc Dữ liệu (Polyglot Persistence):** 
@@ -50,7 +57,7 @@ Phân hệ này cho phép Admin thao tác trực tiếp với dữ liệu Server
 
 **2.1. Xem danh sách (View Server)**
 - Hệ thống hỗ trợ hiển thị danh sách dưới dạng bảng có **Phân trang (Pagination)**.
-- Hỗ trợ **Bộ lọc (Filter)** theo Tên (Name) hoặc Trạng thái (Online/Offline).
+- Hỗ trợ **Bộ lọc (Filter)** đa dạng: Tìm kiếm thông minh đồng thời theo Tên hoặc IPv4, lọc theo Trạng thái (Online/Offline), và lọc theo **Khoảng thời gian tạo (Created From - To)**.
 - Hỗ trợ **Sắp xếp (Sort)** dữ liệu linh hoạt.
 
 > **[CHÈN ẢNH 2 TẠI ĐÂY: Chụp màn hình Danh sách Server với thanh Search, Filter và Phân trang]**
@@ -75,7 +82,7 @@ Tính năng giúp tiết kiệm thời gian khi làm việc với hàng nghìn S
 
 **3.2. Export Excel**
 - Nhấn nút "Export Excel" trên giao diện danh sách.
-- Hệ thống sẽ trả về file `.xlsx` chứa toàn bộ dữ liệu đang được lọc hiện hành.
+- Hệ thống sẽ trả về file `.xlsx` chứa toàn bộ dữ liệu khớp với bộ lọc hiện hành (bao gồm lọc theo Tên/IP, Trạng thái và Khoảng thời gian tạo).
 
 ---
 

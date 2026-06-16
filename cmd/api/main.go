@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"server-management-service/internal/shared/logger"
 
 	"server-management-service/internal/app"
 )
@@ -9,10 +9,10 @@ import (
 func main() {
 	application, err := app.New()
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Sugar().Fatal(err)
 	}
 
 	if err := application.Run(); err != nil {
-		log.Fatal(err)
+		logger.Log.Sugar().Fatal(err)
 	}
 }

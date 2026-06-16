@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
+	"server-management-service/internal/shared/logger"
 	"strconv"
 	"time"
 
@@ -19,7 +19,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("seed failed: %v", err)
+		logger.Log.Sugar().Fatalf("seed failed: %v", err)
 	}
 }
 
@@ -40,12 +40,12 @@ func run() error {
 	}
 
 	// Clean up previous simulation data
-	log.Println("Cleaning up previous simulation servers...")
+	logger.Log.Sugar().Info("Cleaning up previous simulation servers...")
 	result := db.Where("server_name LIKE ?", "sim-%").Delete(&domain.Server{})
 	if result.Error != nil {
 		return fmt.Errorf("cleanup old sim servers: %w", result.Error)
 	}
-	log.Printf("Deleted %d old simulation servers", result.RowsAffected)
+	logger.Log.Sugar().Infof("Deleted %d old simulation servers", result.RowsAffected)
 
 	redisCfg, err := config.LoadRedisConfig()
 	if err != nil {
@@ -61,7 +61,7 @@ func run() error {
 		if len(keys) > 0 {
 			redisClient.Del(ctx, keys...)
 		}
-		log.Printf("Redis: flushed %d server keys", len(keys))
+		logger.Log.Sugar().Infof("Redis: flushed %d server keys", len(keys))
 	}
 
 	repo := repimpl.NewGormServerRepository(db)
@@ -71,7 +71,7 @@ func run() error {
 	octet3 := 0
 	octet4 := 1
 
-	log.Printf("Seeding %d servers in batches of %d...", count, batchSize)
+	logger.Log.Sugar().Infof("Seeding %d servers in batches of %d...", count, batchSize)
 
 	for i := 0; i < count; i += batchSize {
 		end := i + batchSize
@@ -117,13 +117,13 @@ func run() error {
 		ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
 		if err := cache.BatchUpsert(ctx2, cacheItems); err != nil {
 			cancel2()
-			log.Printf("WARN: redis batch upsert at offset %d: %v", i, err)
+			logger.Log.Sugar().Warnf("WARN: redis batch upsert at offset %d: %v", i, err)
 		}
 		cancel2()
 
-		log.Printf("Seeded %d/%d servers", end, count)
+		logger.Log.Sugar().Infof("Seeded %d/%d servers", end, count)
 	}
 
-	log.Printf("Seed complete: %d servers in DB + Redis", count)
+	logger.Log.Sugar().Infof("Seed complete: %d servers in DB + Redis", count)
 	return nil
 }

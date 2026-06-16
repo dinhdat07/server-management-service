@@ -2,13 +2,13 @@ package app
 
 import (
 	"context"
-	"log"
 	"server-management-service/internal/modules/server_management/handler/grpcserver"
 	resthandler "server-management-service/internal/modules/server_management/handler/rest"
 	"server-management-service/internal/modules/server_management/repository/impl"
 	"server-management-service/internal/modules/server_management/service"
 	"server-management-service/internal/shared/config"
 	"server-management-service/internal/shared/database"
+	"server-management-service/internal/shared/logger"
 
 	infraRedis "server-management-service/internal/infrastructure/redis"
 	"server-management-service/internal/infrastructure/storage"
@@ -38,7 +38,7 @@ func New() (*App, error) {
 
 	db, err := database.GetInstance(cfg.DBUrl)
 	if err != nil {
-		log.Printf("failed to connect to database: %v", err)
+		logger.Log.Sugar().Errorf("failed to connect to database: %v", err)
 		return nil, err
 	}
 
@@ -47,25 +47,25 @@ func New() (*App, error) {
 
 	redisCfg, err := config.LoadRedisConfig()
 	if err != nil {
-		log.Printf("failed to load redis config: %v", err)
+		logger.Log.Sugar().Errorf("failed to load redis config: %v", err)
 	}
 
 	redisClient := database.NewRedisClient(redisCfg)
 	if redisClient != nil {
 		if err := database.PingRedis(context.Background(), redisClient); err != nil {
-			log.Printf("redis ping failed: %v", err)
+			logger.Log.Sugar().Errorf("redis ping failed: %v", err)
 		}
 	}
 
 	esCfg := config.LoadElasticsearchConfig()
 	esClient, err := database.NewElasticsearchClient(context.Background(), []string{esCfg.URL})
 	if err != nil {
-		log.Printf("elasticsearch connection failed: %v", err)
+		logger.Log.Sugar().Errorf("elasticsearch connection failed: %v", err)
 	}
 
 	rateLimitCfg, err := config.LoadRateLimitConfig()
 	if err != nil {
-		log.Printf("failed to load rate limit config: %v", err)
+		logger.Log.Sugar().Errorf("failed to load rate limit config: %v", err)
 	}
 
 	var rateLimiter ratelimit.Limiter
@@ -73,7 +73,7 @@ func New() (*App, error) {
 	if rateLimitCfg != nil && rateLimitCfg.Enabled {
 		rateLimiter, err = ratelimit.NewRedisLimiter(redisClient)
 		if err != nil {
-			log.Printf("failed to initialize rate limiter: %v", err)
+			logger.Log.Sugar().Errorf("failed to initialize rate limiter: %v", err)
 		} else {
 			rateLimitKeyBuilder = ratelimit.NewKeyBuilder(rateLimitCfg.Prefix)
 		}
@@ -81,7 +81,7 @@ func New() (*App, error) {
 
 	validator, err := protovalidate.New()
 	if err != nil {
-		log.Printf("failed to initialize protovalidate: %v", err)
+		logger.Log.Sugar().Errorf("failed to initialize protovalidate: %v", err)
 	}
 	csrfManager := security.NewCSRFManager()
 

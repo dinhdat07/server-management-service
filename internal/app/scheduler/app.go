@@ -3,7 +3,6 @@ package scheduler
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -102,7 +101,7 @@ func (a *App) setupCronJobs() error {
 	}
 
 	_, err := a.cron.AddFunc(cronSpec, func() {
-		log.Println("Running daily report scheduler...")
+		logger.Log.Sugar().Info("Running daily report scheduler...")
 
 		ctx := context.Background()
 
@@ -112,9 +111,9 @@ func (a *App) setupCronJobs() error {
 
 		err := a.reportingService.RequestReport(ctx, a.adminEmail, yesterday, yesterday)
 		if err != nil {
-			log.Printf("Failed to request daily report: %v", err)
+			logger.Log.Sugar().Errorf("Failed to request daily report: %v", err)
 		} else {
-			log.Println("Successfully scheduled daily report")
+			logger.Log.Sugar().Info("Successfully scheduled daily report")
 		}
 	})
 
@@ -124,12 +123,12 @@ func (a *App) setupCronJobs() error {
 func (a *App) Start() {
 	a.reportingWorker.Start(context.Background())
 	a.cron.Start()
-	log.Printf("Daily Scheduler started with cron %q, waiting for cron jobs...", a.cronSpec)
+	logger.Log.Sugar().Infof("Daily Scheduler started with cron %q, waiting for cron jobs...", a.cronSpec)
 }
 
 func (a *App) Stop() {
-	log.Println("Shutting down Daily Scheduler...")
+	logger.Log.Sugar().Info("Shutting down Daily Scheduler...")
 	a.cron.Stop()
 	a.reportingWorker.Stop()
-	log.Println("Daily Scheduler stopped.")
+	logger.Log.Sugar().Info("Daily Scheduler stopped.")
 }

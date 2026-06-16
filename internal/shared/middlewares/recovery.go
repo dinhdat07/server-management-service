@@ -2,8 +2,8 @@ package middlewares
 
 import (
 	"context"
-	"log"
 	"runtime/debug"
+	"server-management-service/internal/shared/logger"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -14,7 +14,7 @@ func RecoveryInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[PANIC] method=%s panic=%v\n%s", info.FullMethod, r, debug.Stack())
+				logger.Log.Sugar().Infof("[PANIC] method=%s panic=%v\n%s", info.FullMethod, r, debug.Stack())
 				err = status.Error(codes.Internal, "internal server error")
 			}
 		}()

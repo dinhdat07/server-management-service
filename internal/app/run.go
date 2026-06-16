@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -59,18 +58,18 @@ func (a *App) Run() error {
 	errCh := make(chan error, 2)
 
 	go func() {
-		log.Printf("grpc listening on %s", grpcAddr)
+		logger.Log.Sugar().Infof("grpc listening on %s", grpcAddr)
 		errCh <- a.runGRPCServer(grpcAddr)
 	}()
 
 	go func() {
-		log.Printf("gateway listening on %s", httpAddr)
+		logger.Log.Sugar().Infof("gateway listening on %s", httpAddr)
 		errCh <- a.runHTTPServer()
 	}()
 
 	select {
 	case <-ctx.Done():
-		log.Println("shutdown signal received")
+		logger.Log.Sugar().Info("shutdown signal received")
 		return a.Shutdown(context.Background())
 
 	case err := <-errCh:
@@ -89,7 +88,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 
 	go func() {
 		if a.GRPCServer != nil {
-			log.Println("stopping grpc server")
+			logger.Log.Sugar().Info("stopping grpc server")
 			a.GRPCServer.GracefulStop()
 		}
 		close(done)
@@ -99,13 +98,13 @@ func (a *App) Shutdown(ctx context.Context) error {
 	case <-done:
 	case <-shutdownCtx.Done():
 		if a.GRPCServer != nil {
-			log.Println("grpc graceful stop timeout, forcing stop")
+			logger.Log.Sugar().Info("grpc graceful stop timeout, forcing stop")
 			a.GRPCServer.Stop()
 		}
 	}
 
 	if a.HTTPServer != nil {
-		log.Println("stopping gateway server")
+		logger.Log.Sugar().Info("stopping gateway server")
 		if err := a.HTTPServer.Shutdown(shutdownCtx); err != nil {
 			return err
 		}
@@ -115,7 +114,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 		a.ReportingWorker.Stop()
 	}
 
-	log.Println("application stopped gracefully")
+	logger.Log.Sugar().Info("application stopped gracefully")
 	return nil
 }
 

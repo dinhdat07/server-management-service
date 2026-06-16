@@ -6,11 +6,13 @@ import (
 	_ "embed"
 	"fmt"
 	"html/template"
-	"log"
 	"sync"
 
 	"server-management-service/internal/modules/reporting/domain"
 	"server-management-service/internal/modules/reporting/repository"
+	"server-management-service/internal/shared/logger"
+
+	"go.uber.org/zap"
 )
 
 //go:embed templates/status_report.html
@@ -61,7 +63,7 @@ func NewReportingWorker(repo repository.ReportingRepository, uptimeCalc domain.U
 }
 
 func (w *reportingWorkerImpl) Start(ctx context.Context) {
-	log.Printf("[ReportingWorker] Starting pool with %d workers", w.workerCount)
+	logger.Log.Sugar().Infof("[ReportingWorker] Starting pool with %d workers", w.workerCount)
 	for i := 0; i < w.workerCount; i++ {
 		w.wg.Add(1)
 		go w.worker(ctx, i)
@@ -69,10 +71,10 @@ func (w *reportingWorkerImpl) Start(ctx context.Context) {
 }
 
 func (w *reportingWorkerImpl) Stop() {
-	log.Println("[ReportingWorker] Stopping pool...")
+	logger.Log.Sugar().Info("[ReportingWorker] Stopping pool...")
 	close(w.jobQueue)
 	w.wg.Wait()
-	log.Println("[ReportingWorker] All workers stopped.")
+	logger.Log.Sugar().Info("[ReportingWorker] All workers stopped.")
 }
 
 func (w *reportingWorkerImpl) EnqueueReport(req *domain.ReportRequest) {
@@ -81,19 +83,19 @@ func (w *reportingWorkerImpl) EnqueueReport(req *domain.ReportRequest) {
 
 func (w *reportingWorkerImpl) worker(ctx context.Context, id int) {
 	defer w.wg.Done()
-	log.Printf("[ReportingWorker-%d] Started", id)
+	logger.Log.Info("ReportingWorker Started", zap.Int("worker_id", id))
 	for req := range w.jobQueue {
 		w.processReport(ctx, req, id)
 	}
-	log.Printf("[ReportingWorker-%d] Stopped", id)
+	logger.Log.Info("ReportingWorker Stopped", zap.Int("worker_id", id))
 }
 
 func (w *reportingWorkerImpl) processReport(ctx context.Context, req *domain.ReportRequest, workerID int) {
-	log.Printf("[ReportingWorker-%d] Processing report: %s", workerID, req.ID)
+	logger.Log.Info("Processing report", zap.Int("worker_id", workerID), zap.String("report_id", req.ID.String()))
 
 	err := w.repo.UpdateReportStatus(ctx, req.ID.String(), domain.ReportStatusProcessing)
 	if err != nil {
-		log.Printf("[ReportingWorker-%d] Failed to update status to PROCESSING: %v", workerID, err)
+		logger.Log.Error("Failed to update status to PROCESSING", zap.Int("worker_id", workerID), zap.Error(err))
 		return
 	}
 
@@ -101,15 +103,15 @@ func (w *reportingWorkerImpl) processReport(ctx context.Context, req *domain.Rep
 
 	finalStatus := domain.ReportStatusCompleted
 	if err != nil {
-		log.Printf("[ReportingWorker-%d] Report %s failed: %v", workerID, req.ID, err)
+		logger.Log.Error("Report failed", zap.Int("worker_id", workerID), zap.String("report_id", req.ID.String()), zap.Error(err))
 		finalStatus = domain.ReportStatusFailed
 	}
 
 	err = w.repo.UpdateReportStatus(ctx, req.ID.String(), finalStatus)
 	if err != nil {
-		log.Printf("[ReportingWorker-%d] Failed to update final status: %v", workerID, err)
+		logger.Log.Error("Failed to update final status", zap.Int("worker_id", workerID), zap.Error(err))
 	} else {
-		log.Printf("[ReportingWorker-%d] Finished report: %s", workerID, req.ID)
+		logger.Log.Info("Finished report", zap.Int("worker_id", workerID), zap.String("report_id", req.ID.String()))
 	}
 }
 
@@ -159,13 +161,13 @@ func (w *reportingWorkerImpl) doWork(ctx context.Context, req *domain.ReportRequ
 	}
 	htmlStr := buf.String()
 
-	log.Printf("[ReportingWorker] Sending email to %s", req.RequestorEmail)
+	logger.Log.Sugar().Infof("[ReportingWorker] Sending email to %s", req.RequestorEmail)
 
 	// Call internal Notification Service
 	if w.notifier != nil {
 		err := w.notifier.SendReportEmail(ctx, req.RequestorEmail, "Server Status Report", htmlStr)
 		if err != nil {
-			log.Printf("[ReportingWorker] Error sending email: %v", err)
+			logger.Log.Sugar().Errorf("[ReportingWorker] Error sending email: %v", err)
 			return fmt.Errorf("failed to send email: %w", err)
 		}
 	}

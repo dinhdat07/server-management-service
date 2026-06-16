@@ -5,8 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
+	"server-management-service/internal/shared/logger"
 	"strings"
 	"time"
 
@@ -130,7 +130,7 @@ func (s *serverService) ImportServers(ctx context.Context, fileBytes []byte) (*I
 					})
 				}
 				if err := s.cache.BatchUpsert(ctx, cacheItems); err != nil {
-					log.Printf("[WARNING] DB Import succeeded but Redis sync failed: %v", err)
+					logger.Log.Sugar().Errorf("[WARNING] DB Import succeeded but Redis sync failed: %v", err)
 				}
 			}
 		}

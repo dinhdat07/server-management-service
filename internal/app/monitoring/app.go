@@ -3,7 +3,6 @@ package monitoring
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -43,7 +42,7 @@ func NewApp() (*App, error) {
 
 	redisCfg, err := config.LoadRedisConfig()
 	if err != nil {
-		log.Printf("Failed to load redis config: %v", err)
+		logger.Log.Sugar().Errorf("Failed to load redis config: %v", err)
 	}
 
 	// Initialize Postgres
@@ -114,7 +113,7 @@ func (a *App) Run() error {
 	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
 
-	log.Printf("Monitoring Worker started. Scanning every %s\n", tickInterval)
+	logger.Log.Sugar().Infof("Monitoring Worker started. Scanning every %s\n", tickInterval)
 
 	go func() {
 		// Run immediately on startup
@@ -130,7 +129,7 @@ func (a *App) Run() error {
 	}()
 
 	<-sigCh
-	log.Println("Shutting down Monitoring Worker...")
+	logger.Log.Sugar().Info("Shutting down Monitoring Worker...")
 	cancel()
 
 	// Wait for running workers to finish
@@ -140,7 +139,7 @@ func (a *App) Run() error {
 		a.esLogger.Shutdown()
 	}
 
-	log.Println("Monitoring Worker stopped.")
+	logger.Log.Sugar().Info("Monitoring Worker stopped.")
 	return nil
 }
 
@@ -151,24 +150,24 @@ func (a *App) runCycle(ctx context.Context) {
 	// Try to acquire distributed lock
 	acquired, err := database.AcquireLock(ctx, a.RedisClient, lockKey, lockExpiration)
 	if err != nil {
-		log.Printf("[Scheduler] Failed to acquire lock: %v\n", err)
+		logger.Log.Sugar().Errorf("[Scheduler] Failed to acquire lock: %v\n", err)
 		return
 	}
 
 	if !acquired {
-		log.Println("[Scheduler] Lock not acquired. Another instance is running the cycle.")
+		logger.Log.Sugar().Info("[Scheduler] Lock not acquired. Another instance is running the cycle.")
 		return
 	}
 	// Not release to ensure the full 25s window belongs to this instance.
-	log.Println("[Scheduler] Lock acquired. Starting monitoring cycle...")
+	logger.Log.Sugar().Info("[Scheduler] Lock acquired. Starting monitoring cycle...")
 
 	start := time.Now()
 	err = a.Pool.Run(ctx)
 	duration := time.Since(start)
 
 	if err != nil {
-		log.Printf("[Scheduler] Cycle completed with error: %v (Duration: %s)\n", err, duration)
+		logger.Log.Sugar().Errorf("[Scheduler] Cycle completed with error: %v (Duration: %s)\n", err, duration)
 	} else {
-		log.Printf("[Scheduler] Cycle completed successfully (Duration: %s)\n", duration)
+		logger.Log.Sugar().Infof("[Scheduler] Cycle completed successfully (Duration: %s)\n", duration)
 	}
 }

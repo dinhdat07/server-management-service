@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
+	"server-management-service/internal/shared/logger"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,8 +45,8 @@ func main() {
 		startAutoFlapper()
 	}
 
-	log.Printf("Simulator API listening on :8080 (%d IPs, subnet=%s)", totalIPs, subnet)
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	logger.Log.Sugar().Infof("Simulator API listening on :8080 (%d IPs, subnet=%s)", totalIPs, subnet)
+	logger.Log.Sugar().Fatal(http.ListenAndServe(":8080", mux))
 }
 
 func handleReset(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,7 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if out, err := flushDownIPs(); err != nil {
-		log.Printf("nft flush failed: %v, output: %s", err, out)
+		logger.Log.Sugar().Errorf("nft flush failed: %v, output: %s", err, out)
 		http.Error(w, "nft error", http.StatusInternalServerError)
 		return
 	}
@@ -75,7 +75,7 @@ func handleDown(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, ip := range cleanIPs(req.IPs) {
 		if out, err := addDownIP(ip); err != nil {
-			log.Printf("nft add failed for %s: %v, output: %s", ip, err, out)
+			logger.Log.Sugar().Errorf("nft add failed for %s: %v, output: %s", ip, err, out)
 			http.Error(w, "nft error", http.StatusInternalServerError)
 			return
 		}
@@ -104,7 +104,7 @@ func handleUp(w http.ResponseWriter, r *http.Request) {
 func handleStatus(w http.ResponseWriter, r *http.Request) {
 	downSet, err := listDownIPs()
 	if err != nil {
-		log.Printf("nft list failed: %v", err)
+		logger.Log.Sugar().Errorf("nft list failed: %v", err)
 		http.Error(w, "nft error", http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +119,7 @@ func startAutoFlapper() {
 	interval := envDuration("SIMULATOR_FLAP_INTERVAL", 60*time.Second)
 	percent := envFloat("SIMULATOR_FLAP_PERCENT", 5)
 	if interval <= 0 || percent <= 0 {
-		log.Printf("Auto flapper disabled: interval=%s percent=%.2f", interval, percent)
+		logger.Log.Sugar().Infof("Auto flapper disabled: interval=%s percent=%.2f", interval, percent)
 		return
 	}
 
@@ -140,13 +140,13 @@ func startAutoFlapper() {
 	}
 	rng := rand.New(rand.NewSource(seed))
 
-	log.Printf("Auto flapper enabled: interval=%s, flip=%.2f%% (%d/%d), seed=%d", interval, percent, flipCount, totalIPs, seed)
+	logger.Log.Sugar().Infof("Auto flapper enabled: interval=%s, flip=%.2f%% (%d/%d), seed=%d", interval, percent, flipCount, totalIPs, seed)
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for range ticker.C {
 			if err := flapOnce(ips, flipCount, rng); err != nil {
-				log.Printf("auto flap failed: %v", err)
+				logger.Log.Sugar().Errorf("auto flap failed: %v", err)
 			}
 		}
 	}()
@@ -171,14 +171,14 @@ func flapOnce(ips []string, flipCount int, rng *rand.Rand) error {
 			continue
 		}
 		if out, err := addDownIP(ip); err != nil {
-			log.Printf("nft add failed for %s: %v, output: %s", ip, err, out)
+			logger.Log.Sugar().Errorf("nft add failed for %s: %v, output: %s", ip, err, out)
 			return err
 		}
 		downSet[ip] = true
 		toDown++
 	}
 
-	log.Printf("auto flap: flipped=%d to_down=%d to_up=%d down=%d/%d", len(selected), toDown, toUp, len(downSet), totalIPs)
+	logger.Log.Sugar().Infof("auto flap: flipped=%d to_down=%d to_up=%d down=%d/%d", len(selected), toDown, toUp, len(downSet), totalIPs)
 	return nil
 }
 
