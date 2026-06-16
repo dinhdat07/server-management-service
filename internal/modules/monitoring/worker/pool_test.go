@@ -56,9 +56,69 @@ func TestWorkerPool_Run(t *testing.T) {
 	monService.On("Evaluate", mock.Anything, "id-2", "2.2.2.2", false).Return(nil)
 
 	err := pool.Run(ctx)
-
 	assert.NoError(t, err)
 	assert.NoError(t, mockRedis.ExpectationsWereMet())
 	pinger.AssertExpectations(t)
 	monService.AssertExpectations(t)
+}
+
+func TestWorkerPool_Run_Errors(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("SMembers error", func(t *testing.T) {
+		db, mockRedis := redismock.NewClientMock()
+		pool := NewWorkerPool(db, nil, nil, 2, 1*time.Second)
+		mockRedis.ExpectSMembers(infraRedis.ServerAllIDsKey).SetErr(assert.AnError)
+		err := pool.Run(ctx)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("Empty serverIDs", func(t *testing.T) {
+		db, mockRedis := redismock.NewClientMock()
+		pool := NewWorkerPool(db, nil, nil, 2, 1*time.Second)
+		mockRedis.ExpectSMembers(infraRedis.ServerAllIDsKey).SetVal([]string{})
+		err := pool.Run(ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("HGet error", func(t *testing.T) {
+		db, mockRedis := redismock.NewClientMock()
+		monService := new(mockMonitoringService)
+		pinger := new(mockPinger)
+		pool := NewWorkerPool(db, monService, pinger, 2, 1*time.Second)
+
+		mockRedis.ExpectSMembers(infraRedis.ServerAllIDsKey).SetVal([]string{"id-1"})
+		mockRedis.ExpectHGet("server:info:id-1", "ipv4").SetErr(assert.AnError)
+
+		err := pool.Run(ctx)
+		assert.NoError(t, err) // Doesn't fail overall run
+	})
+
+	t.Run("Empty IPv4", func(t *testing.T) {
+		db, mockRedis := redismock.NewClientMock()
+		monService := new(mockMonitoringService)
+		pinger := new(mockPinger)
+		pool := NewWorkerPool(db, monService, pinger, 2, 1*time.Second)
+
+		mockRedis.ExpectSMembers(infraRedis.ServerAllIDsKey).SetVal([]string{"id-1"})
+		mockRedis.ExpectHGet("server:info:id-1", "ipv4").SetVal("")
+
+		err := pool.Run(ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Evaluate error", func(t *testing.T) {
+		db, mockRedis := redismock.NewClientMock()
+		monService := new(mockMonitoringService)
+		pinger := new(mockPinger)
+		pool := NewWorkerPool(db, monService, pinger, 2, 1*time.Second)
+
+		mockRedis.ExpectSMembers(infraRedis.ServerAllIDsKey).SetVal([]string{"id-1"})
+		mockRedis.ExpectHGet("server:info:id-1", "ipv4").SetVal("1.1.1.1")
+		pinger.On("Ping", "1.1.1.1", 1*time.Second).Return(true)
+		monService.On("Evaluate", mock.Anything, "id-1", "1.1.1.1", true).Return(assert.AnError)
+
+		err := pool.Run(ctx)
+		assert.NoError(t, err)
+	})
 }
