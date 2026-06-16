@@ -110,3 +110,20 @@ Tính năng giúp tiết kiệm thời gian khi làm việc với hàng nghìn S
 - Giao diện sẽ hiển thị danh sách các yêu cầu báo cáo cùng trạng thái (Pending, Processing, Completed). Khi hoàn thành, báo cáo cũng sẽ được gửi về Email.
 
 > **[CHÈN ẢNH 7 TẠI ĐÂY: Chụp màn hình giao diện Yêu cầu Báo cáo Chủ động (Start date, End date) và Bảng trạng thái]**
+
+---
+
+### 6. Giới hạn Truy cập (Rate Limiting)
+Để bảo vệ hệ thống khỏi các cuộc tấn công từ chối dịch vụ (DDoS) và đảm bảo công bằng tài nguyên, hệ thống có áp dụng các giới hạn API chặt chẽ. Khi bạn thao tác quá nhanh, hệ thống sẽ trả về lỗi **429 Too Many Requests**.
+
+**Các hạn mức cụ thể (tính trên 1 phút):**
+- **Đăng nhập (Login) / Import Server:** Tối đa **5 lần/phút**.
+- **Yêu cầu Báo cáo (Request Report):** Tối đa **10 lần/phút**.
+- **Xóa Server (Delete):** Tối đa **20 lần/phút**.
+- **Refresh Token:** Tối đa **30 lần/phút**.
+- **Tạo / Sửa Server (Create/Update):** Tối đa **60 lần/phút**.
+- **Xem danh sách Server (View):** Tối đa **120 lần/phút**.
+- **Các thao tác khác:** Tối đa **300 lần/phút**.
+
+> [!NOTE]
+> Thời gian đếm ngược sẽ tự động reset lại sau mỗi phút. Nếu gặp lỗi này, bạn vui lòng đợi một lát rồi thử lại nhé!

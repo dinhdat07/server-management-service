@@ -434,3 +434,28 @@ erDiagram
 1.  **Cơ chế Dual-write (Postgres + Redis):** Mỗi khi có thao tác Create/Update/Delete Server trên PostgreSQL, hệ thống thực thi một Transaction hoặc Pipeline lập tức ghi đè thông tin tương ứng sang Redis Cache. Đảm bảo Monitoring Worker luôn đọc được dữ liệu mới nhất.
 2.  **Cơ chế Write Amplification Reduction (Postgres):** Tiến trình Monitoring chỉ cập nhật DB Postgres khi và chỉ khi server **thực sự chuyển trạng thái** (Từ ONLINE sang OFFLINE hoặc ngược lại), thay vì update DB liên tục mỗi lần ping.
 3.  **Cơ chế Asynchronous Logging (Elasticsearch):** Monitoring Worker không ghi trực tiếp log ping vào DB. Thay vào đó, dữ liệu được đẩy vào một Buffered Channel (Goroutine), sau đó Bulk Insert lên Elasticsearch theo từng Batch (chu kỳ vài giây). Kiến trúc Fire-and-forget này giúp luồng Ping ICMP cực kỳ thanh thoát và không bị thắt cổ chai bởi I/O mạng.
+
+---
+
+## 6. BẢO MẬT & GIỚI HẠN TÀI NGUYÊN (SECURITY & RATE LIMITING)
+
+Hệ thống được thiết kế với cơ chế phòng thủ nhiều lớp thông qua chuỗi **gRPC Interceptors** và Middleware, đặc biệt là cơ chế Rate Limiting nghiêm ngặt để chống lại các cuộc tấn công DDoS và Brute-force:
+
+### 6.1. Rate Limiting (Giới hạn truy cập)
+Sử dụng **Redis** làm kho lưu trữ biến đếm phân tán (Distributed Counters). Giới hạn được bóc tách thành 2 cấp độ:
+
+*   **Pre-Auth Rate Limit (Theo IP):** Chặn các request nặc danh quá đà trước cả khi hệ thống tốn CPU để parse Token.
+    *   **Login:** 5 requests / phút (Ngăn chặn dò mật khẩu).
+    *   **Refresh Token:** 30 requests / phút.
+*   **Post-Auth Rate Limit (Theo UserID):** Phân bổ tài nguyên hợp lý giữa các User đã đăng nhập.
+    *   **Import Server / Upload:** 5 requests / phút (Do file Excel ngốn nhiều RAM).
+    *   **Request Report:** 10 requests / phút.
+    *   **Delete Server:** 20 requests / phút (Ngăn chặn hành vi phá hoại).
+    *   **Create / Update Server:** 60 requests / phút.
+    *   **View Servers (Read):** 120 requests / phút.
+    *   **Global (Mặc định cho các API khác):** 300 requests / phút.
+
+### 6.2. Các lớp bảo vệ khác
+*   **Authentication (JWT):** Yêu cầu Token hợp lệ kèm cơ chế Anti-Replay Attack bằng Token Blacklist (Redis).
+*   **CSRF Protection:** Chặn các cuộc tấn công giả mạo yêu cầu qua trình duyệt.
+*   **RBAC (Role-Based Access Control):** Phân quyền dựa trên User Role (Admin, Editor, Viewer).

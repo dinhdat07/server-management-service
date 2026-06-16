@@ -3,29 +3,30 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body { margin: 0; padding: 24px; background: #f6f8f7; color: #17211b; font-family: Arial, Helvetica, sans-serif; }
-        .container { max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #dfe7e2; border-radius: 18px; overflow: hidden; }
-        .hero { padding: 28px 32px; background: linear-gradient(135deg, #eef8f1 0%, #ffffff 62%); border-bottom: 1px solid #dfe7e2; }
-        .eyebrow { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: #4d6b58; text-transform: uppercase; letter-spacing: 0.08em; }
-        h1 { margin: 0; font-size: 28px; line-height: 1.2; color: #17211b; }
-        .subtitle { margin: 10px 0 0; color: #637066; font-size: 14px; line-height: 1.6; }
-        .section { padding: 26px 32px; border-bottom: 1px solid #edf1ee; }
-        .grid { display: table; width: 100%; border-spacing: 12px; margin: -12px; }
-        .card { display: table-cell; width: 33.33%; padding: 18px; border: 1px solid #dfe7e2; border-radius: 14px; background: #fbfdfb; vertical-align: top; }
-        .label { margin: 0; font-size: 12px; font-weight: 700; color: #637066; text-transform: uppercase; letter-spacing: 0.06em; }
-        .value { margin: 8px 0 0; font-size: 30px; font-weight: 700; color: #17211b; }
-        .hint { margin: 6px 0 0; font-size: 13px; color: #637066; }
-        .online { color: #16803c; }
-        .offline { color: #c23b3b; }
-        .uptime { padding: 24px; border-radius: 16px; background: #edf8f0; border: 1px solid #bfe5ca; text-align: center; }
-        .uptime .score { margin: 8px 0 0; font-size: 42px; font-weight: 800; color: #16803c; }
-        .summary { margin: 0; color: #637066; font-size: 14px; line-height: 1.7; }
-        .footer { padding: 22px 32px; color: #8a968e; font-size: 12px; line-height: 1.6; text-align: center; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { margin: 0; padding: 32px; background: #f7f7f7; color: #0a0a0a; font-family: 'Plus Jakarta Sans', Arial, sans-serif; }
+        .container { max-width: 680px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+        .hero { padding: 36px; background: linear-gradient(135deg, #0a0a0a 0%, #1c1c1e 100%); color: #ffffff; }
+        .eyebrow { margin: 0 0 10px; font-size: 13px; font-weight: 800; color: #00d4a4; text-transform: uppercase; letter-spacing: 0.1em; }
+        h1 { margin: 0; font-size: 32px; font-weight: 800; line-height: 1.2; color: #ffffff; }
+        .subtitle { margin: 12px 0 0; color: #a8a8aa; font-size: 15px; line-height: 1.6; }
+        .section { padding: 32px 36px; border-bottom: 1px solid #ededed; }
+        .grid { display: table; width: 100%; border-spacing: 16px; margin: -16px; }
+        .card { display: table-cell; width: 33.33%; padding: 20px; border: 1px solid #e5e5e5; border-radius: 16px; background: #fafafa; vertical-align: top; }
+        .label { margin: 0; font-size: 13px; font-weight: 700; color: #5a5a5c; text-transform: uppercase; letter-spacing: 0.08em; }
+        .value { margin: 10px 0 0; font-size: 36px; font-weight: 800; color: #0a0a0a; }
+        .hint { margin: 8px 0 0; font-size: 14px; color: #888888; }
+        .online { color: #00b48a; }
+        .offline { color: #d45656; }
+        .uptime { padding: 32px; border-radius: 16px; background: #f0fdf9; border: 1px solid #00d4a4; text-align: center; }
+        .uptime .score { margin: 12px 0 0; font-size: 56px; font-weight: 800; color: #00b48a; }
+        .summary { margin: 0; color: #5a5a5c; font-size: 15px; line-height: 1.7; }
+        .footer { padding: 24px 36px; color: #a8a8aa; font-size: 13px; line-height: 1.6; text-align: center; background: #fafafa; }
         @media only screen and (max-width: 640px) {
-            body { padding: 12px; }
-            .hero, .section, .footer { padding: 22px; }
+            body { padding: 16px; }
+            .hero, .section, .footer { padding: 24px; }
             .grid, .card { display: block; width: auto; }
-            .card { margin: 0 0 12px; }
+            .card { margin: 0 0 16px; }
         }
     </style>
 </head>

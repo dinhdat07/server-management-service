@@ -284,6 +284,7 @@ Request in
   ▼
 [2] PreAuthRateLimitInterceptor
     → Rate limit theo IP (trước khi biết UserID)
+    → Login: 5 requests/phút. Refresh Token: 30 requests/phút.
     → Backend: Redis counter per IP+method
   │
   ▼
