@@ -36,38 +36,39 @@ func NewWorkerPool(rdb redis.UniversalClient, monService service.MonitoringServi
 }
 
 func (w *workerPool) Run(ctx context.Context) error {
-	// Fetch all Server IDs from Redis
-	serverIDs, err := w.rdb.SMembers(ctx, infraRedis.ServerAllIDsKey).Result()
-	if err != nil {
-		return fmt.Errorf("failed to fetch server IDs from redis: %w", err)
-	}
-
-	if len(serverIDs) == 0 {
-		return nil // Nothing to do
-	}
-
-	// Setup Worker Pool
 	var wg sync.WaitGroup
-	idChan := make(chan string, len(serverIDs))
 
 	// Spawn workers
 	for i := 0; i < w.concurrency; i++ {
 		wg.Add(1)
-		go func() {
+		go func(workerID int) {
 			defer wg.Done()
-			for id := range idChan {
-				w.processServer(ctx, id)
+			
+			for {
+				// Check context cancellation
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				// Pop a server ID from the shared Redis queue
+				serverID, err := w.rdb.LPop(ctx, "monitoring:queue").Result()
+				if err == redis.Nil {
+					// Queue is empty, cycle is complete
+					return
+				} else if err != nil {
+					logger.Log.Sugar().Errorf("[Worker-%d] Failed to pop from queue: %v", workerID, err)
+					return // Stop worker on redis error
+				}
+
+				// Process the popped server
+				w.processServer(ctx, serverID)
 			}
-		}()
+		}(i)
 	}
 
-	// Distribute work
-	for _, id := range serverIDs {
-		idChan <- id
-	}
-	close(idChan)
-
-	// Wait for all workers to finish
+	// Wait for all local workers to finish processing their pops
 	wg.Wait()
 	return nil
 }

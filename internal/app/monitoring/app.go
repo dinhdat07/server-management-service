@@ -144,30 +144,41 @@ func (a *App) Run() error {
 }
 
 func (a *App) runCycle(ctx context.Context) {
-	lockKey := config.GetEnvDefault("MONITORING_WORKER_LOCK_KEY", "lock:monitoring_worker")
-	lockExpiration, _ := config.GetEnvDuration("MONITORING_WORKER_LOCK_EXPIRATION", 25*time.Second)
+	lockKey := config.GetEnvDefault("MONITORING_PRODUCER_LOCK_KEY", "lock:monitoring_producer")
+	lockExpiration := 10 * time.Second
 
-	// Try to acquire distributed lock
-	acquired, err := database.AcquireLock(ctx, a.RedisClient, lockKey, lockExpiration)
-	if err != nil {
-		logger.Log.Sugar().Errorf("[Scheduler] Failed to acquire lock: %v\n", err)
-		return
+	// 1. PHASE 1: Producer Election
+	acquired, _ := database.AcquireLock(ctx, a.RedisClient, lockKey, lockExpiration)
+	if acquired {
+		logger.Log.Sugar().Info("[Producer] Lock acquired. Populating work queue...")
+		// Fetch all Server IDs
+		serverIDs, err := a.RedisClient.SMembers(ctx, "servers:all_ids").Result()
+		if err == nil && len(serverIDs) > 0 {
+			// Clear existing queue just in case
+			a.RedisClient.Del(ctx, "monitoring:queue")
+			
+			// Push all servers to queue
+			args := make([]interface{}, len(serverIDs))
+			for i, v := range serverIDs {
+				args[i] = v
+			}
+			a.RedisClient.RPush(ctx, "monitoring:queue", args...)
+			logger.Log.Sugar().Infof("[Producer] Pushed %d servers to the queue.", len(serverIDs))
+		}
+	} else {
+		logger.Log.Sugar().Info("[Consumer] Ready to process queue...")
+		// Small wait to allow Producer to initialize queue
+		time.Sleep(1 * time.Second)
 	}
 
-	if !acquired {
-		logger.Log.Sugar().Info("[Scheduler] Lock not acquired. Another instance is running the cycle.")
-		return
-	}
-	// Not release to ensure the full 25s window belongs to this instance.
-	logger.Log.Sugar().Info("[Scheduler] Lock acquired. Starting monitoring cycle...")
-
+	// 2. PHASE 2: Consumer (ALL workers participate)
 	start := time.Now()
-	err = a.Pool.Run(ctx)
+	err := a.Pool.Run(ctx)
 	duration := time.Since(start)
 
 	if err != nil {
-		logger.Log.Sugar().Errorf("[Scheduler] Cycle completed with error: %v (Duration: %s)\n", err, duration)
+		logger.Log.Sugar().Errorf("[Consumer] Worker cycle completed with error: %v (Duration: %s)\n", err, duration)
 	} else {
-		logger.Log.Sugar().Infof("[Scheduler] Cycle completed successfully (Duration: %s)\n", duration)
+		logger.Log.Sugar().Infof("[Consumer] Worker cycle completed (Duration: %s)\n", duration)
 	}
 }
