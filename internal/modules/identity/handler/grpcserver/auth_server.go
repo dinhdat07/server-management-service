@@ -19,6 +19,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const (
+	refreshTokenTTL = 7 * 24 * 60 * 60 // 7 days in seconds
+	csrfTokenTTL    = 24 * 60 * 60     // 1 day in seconds
+)
+
 func authCookie(name, value string, maxAge int, httpOnly bool) string {
 	return (&http.Cookie{
 		Name:     name,
@@ -91,8 +96,8 @@ func (s *AuthServer) Login(ctx context.Context, req *authv1.LoginRequest) (*auth
 	if err == nil {
 		_ = grpc.SetHeader(ctx, metadata.Pairs(
 			"Set-Cookie-Access-Token", authCookie("access_token", result.AccessToken, int(result.ExpiresIn), true),
-			"Set-Cookie-Refresh-Token", authCookie("refresh_token", result.RefreshToken, 604800, true),
-			"Set-Cookie-Csrf-Token", authCookie("csrf_token", csrfToken, 86400, false),
+			"Set-Cookie-Refresh-Token", authCookie("refresh_token", result.RefreshToken, refreshTokenTTL, true),
+			"Set-Cookie-Csrf-Token", authCookie("csrf_token", csrfToken, csrfTokenTTL, false),
 		))
 	}
 
@@ -139,8 +144,8 @@ func (s *AuthServer) RefreshToken(ctx context.Context, req *authv1.RefreshReques
 	if err == nil {
 		_ = grpc.SetHeader(ctx, metadata.Pairs(
 			"Set-Cookie-Access-Token", authCookie("access_token", result.AccessToken, int(result.ExpiresIn), true),
-			"Set-Cookie-Refresh-Token", authCookie("refresh_token", result.RefreshToken, 604800, true),
-			"Set-Cookie-Csrf-Token", authCookie("csrf_token", csrfToken, 86400, false),
+			"Set-Cookie-Refresh-Token", authCookie("refresh_token", result.RefreshToken, refreshTokenTTL, true),
+			"Set-Cookie-Csrf-Token", authCookie("csrf_token", csrfToken, csrfTokenTTL, false),
 		))
 	}
 

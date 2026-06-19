@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"server-management-service/internal/modules/reporting/domain"
+	"server-management-service/internal/shared/logger"
 
 	esv8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/count"
@@ -24,6 +25,7 @@ func NewESUptimeCalculator(esClient *esv8.TypedClient, esIndex string) domain.Up
 
 func (c *ESUptimeCalculator) CalculateUptime(ctx context.Context, startTime, endTime time.Time) (float64, error) {
 	if c.esClient == nil {
+		logger.Log.Warn("Elasticsearch client is nil, skipping uptime calculation")
 		return 0, nil
 	}
 
@@ -83,4 +85,3 @@ func (c *ESUptimeCalculator) CalculateUptime(ctx context.Context, startTime, end
 
 	return (float64(successCountReq.Count) / float64(totalCountReq.Count)) * 100, nil
 }
-
