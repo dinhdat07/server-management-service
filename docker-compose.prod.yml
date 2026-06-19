@@ -58,102 +58,24 @@ services:
       retries: 10
 
   # ============================================
-  # MailHog — Email testing (SMTP + Web UI)
-  # ============================================
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: sms_mailhog
-    restart: unless-stopped
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # Web UI (http://localhost:8025)
-
-  # ============================================
-  # Server Simulator — Virtual IPs + nftables
-  # ============================================
-  simulator:
-    build:
-      context: .
-      dockerfile: cmd/simulator/Dockerfile
-    container_name: sms_simulator
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    environment:
-      SIMULATOR_IP_COUNT: "10000"
-      SIMULATOR_SUBNET: "10.1"
-      SIMULATOR_AUTO_FLAP_ENABLED: "true"
-      SIMULATOR_FLAP_INTERVAL: "60s"
-      SIMULATOR_FLAP_PERCENT: "5"
-    networks:
-      - default
-
-  # ============================================
-  # Monitoring Worker — runs in Docker network so ICMP can reach simulator IPs
-  # ============================================
-  monitoring-worker:
-    build:
-      context: .
-      dockerfile: cmd/monitoring-worker/Dockerfile
-    container_name: sms_monitoring_worker
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      simulator:
-        condition: service_started
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    environment:
-      ENV: development
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sms?sslmode=disable
-      REDIS_ENABLED: "true"
-      REDIS_ADDR: redis:6379
-      REDIS_PASSWORD: ""
-      REDIS_DB: "0"
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-      ELASTICSEARCH_SERVER_INDEX: sms_observation_logs
-      ICMP_PRIVILEGED: "true"
-      MONITORING_FAILURE_THRESHOLD: "1"
-      MONITORING_WORKER_CONCURRENCY: "500"
-      MONITORING_WORKER_PING_TIMEOUT: 3s
-      MONITORING_WORKER_TICK_INTERVAL: 60s
-      MONITORING_WORKER_LOCK_KEY: lock:monitoring_worker
-      MONITORING_WORKER_LOCK_EXPIRATION: 55s
-      SIMULATOR_HOST: simulator
-      SIMULATOR_SUBNET: 10.1.0.0/16
-      LOG_LEVEL: info
-      LOG_FORMAT: text
-    networks:
-      - default
-
-  # ============================================
-  # API Backend — Core HTTP/gRPC Server
+  # API Backend — Core HTTP/gRPC Server (Production)
   # ============================================
   api:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: sms_api
     restart: unless-stopped
     ports:
       - "8000:8000"
       - "50051:50051"
-    volumes:
-      - .:/app
     env_file:
       - .env
     environment:
+      ENV: production
       DB_URL: postgresql://postgres:postgres@postgres:5432/sms?sslmode=disable
       REDIS_ADDR: redis:6379
       ELASTICSEARCH_URL: http://elasticsearch:9200
-      SMTP_HOST: mailhog
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,23 +83,21 @@ services:
         condition: service_healthy
 
   # ============================================
-  # Daily Scheduler
+  # Daily Scheduler (Production)
   # ============================================
   daily-scheduler:
     build:
       context: .
-      dockerfile: cmd/daily-scheduler/Dockerfile.dev
+      dockerfile: cmd/daily-scheduler/Dockerfile
     container_name: sms_daily_scheduler
     restart: unless-stopped
-    volumes:
-      - .:/app
     env_file:
       - .env
     environment:
+      ENV: production
       DB_URL: postgresql://postgres:postgres@postgres:5432/sms?sslmode=disable
       REDIS_ADDR: redis:6379
       ELASTICSEARCH_URL: http://elasticsearch:9200
-      SMTP_HOST: mailhog
     depends_on:
       postgres:
         condition: service_healthy
@@ -185,20 +105,16 @@ services:
         condition: service_healthy
 
   # ============================================
-  # Frontend Angular App
+  # Frontend Angular App + Nginx (Production)
   # ============================================
   frontend:
     build:
       context: ../sms-frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: sms_frontend
     restart: unless-stopped
     ports:
-      - "4200:4200"
-    volumes:
-      - ../sms-frontend:/app
-      # Keep container's node_modules isolated
-      - /app/node_modules
+      - "80:80"
     depends_on:
       - api
 

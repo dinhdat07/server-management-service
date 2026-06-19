@@ -73,9 +73,10 @@ func handleDown(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	for _, ip := range cleanIPs(req.IPs) {
-		if out, err := addDownIP(ip); err != nil {
-			logger.Log.Sugar().Errorf("nft add failed for %s: %v, output: %s", ip, err, out)
+	ips := cleanIPs(req.IPs)
+	if len(ips) > 0 {
+		if out, err := addDownIPs(ips); err != nil {
+			logger.Log.Sugar().Errorf("nft add failed for batch: %v, output: %s", err, out)
 			http.Error(w, "nft error", http.StatusInternalServerError)
 			return
 		}
@@ -94,8 +95,9 @@ func handleUp(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	for _, ip := range cleanIPs(req.IPs) {
-		_, _ = deleteDownIP(ip) // Ignore error if IP was not in set.
+	ips := cleanIPs(req.IPs)
+	if len(ips) > 0 {
+		_, _ = deleteDownIPs(ips) // Ignore error if IP was not in set.
 	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -159,26 +161,32 @@ func flapOnce(ips []string, flipCount int, rng *rand.Rand) error {
 	}
 
 	selected := pickRandom(ips, flipCount, rng)
-	toDown := 0
-	toUp := 0
+	var toDown []string
+	var toUp []string
+
 	for _, ip := range selected {
 		if downSet[ip] {
-			if _, err := deleteDownIP(ip); err != nil {
-				return err
-			}
+			toUp = append(toUp, ip)
 			delete(downSet, ip)
-			toUp++
-			continue
+		} else {
+			toDown = append(toDown, ip)
+			downSet[ip] = true
 		}
-		if out, err := addDownIP(ip); err != nil {
-			logger.Log.Sugar().Errorf("nft add failed for %s: %v, output: %s", ip, err, out)
-			return err
-		}
-		downSet[ip] = true
-		toDown++
 	}
 
-	logger.Log.Sugar().Infof("auto flap: flipped=%d to_down=%d to_up=%d down=%d/%d", len(selected), toDown, toUp, len(downSet), totalIPs)
+	if len(toUp) > 0 {
+		if _, err := deleteDownIPs(toUp); err != nil {
+			return err
+		}
+	}
+	if len(toDown) > 0 {
+		if out, err := addDownIPs(toDown); err != nil {
+			logger.Log.Sugar().Errorf("nft add failed for batch: %v, output: %s", err, out)
+			return err
+		}
+	}
+
+	logger.Log.Sugar().Infof("auto flap: flipped=%d to_down=%d to_up=%d down=%d/%d", len(selected), len(toDown), len(toUp), len(downSet), totalIPs)
 	return nil
 }
 
@@ -189,17 +197,25 @@ func flushDownIPs() ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-func addDownIP(ip string) ([]byte, error) {
+func addDownIPs(ips []string) ([]byte, error) {
+	if len(ips) == 0 {
+		return nil, nil
+	}
 	nftMu.Lock()
 	defer nftMu.Unlock()
-	cmd := exec.Command("nft", "add", "element", "inet", "sim", "down_ips", "{", ip, "}")
+	elements := "{ " + strings.Join(ips, ", ") + " }"
+	cmd := exec.Command("nft", "add", "element", "inet", "sim", "down_ips", elements)
 	return cmd.CombinedOutput()
 }
 
-func deleteDownIP(ip string) ([]byte, error) {
+func deleteDownIPs(ips []string) ([]byte, error) {
+	if len(ips) == 0 {
+		return nil, nil
+	}
 	nftMu.Lock()
 	defer nftMu.Unlock()
-	cmd := exec.Command("nft", "delete", "element", "inet", "sim", "down_ips", "{", ip, "}")
+	elements := "{ " + strings.Join(ips, ", ") + " }"
+	cmd := exec.Command("nft", "delete", "element", "inet", "sim", "down_ips", elements)
 	return cmd.CombinedOutput()
 }
 
